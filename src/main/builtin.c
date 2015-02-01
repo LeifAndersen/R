@@ -356,6 +356,47 @@ SEXP attribute_hidden do_parentenv(SEXP call, SEXP op, SEXP args, SEXP rho)
     return( ENCLOS(arg) );
 }
 
+SEXP attribute_hidden do_cont_marks(SEXP call, SEXP op, SEXP args, SEXP rho)
+{
+    checkArity(op, args);
+    SEXP arg = CAR(args);
+    if(!isString(arg)) {
+        error(_("argument is not a string"));
+    }
+
+    return CollectMarks(arg);
+}
+
+SEXP attribute_hidden CollectMarks(SEXP name)
+{
+    SEXP result, t;
+    RCNTXT *c;
+    int n = 0;
+
+    /* Get stack length */
+    for(c = R_GlobalContext;
+        c != NULL && c->callflag != CTXT_TOPLEVEL;
+        c = c->nextcontext) {
+        if (c->callflag & (CTXT_FUNCTION | CTXT_BUILTIN) ) {
+            n++;
+        }
+    }
+
+    /* Get marks */
+    PROTECT(result = allocList(n));
+    t = result;
+    for(c = R_GlobalContext;
+        c != NULL && c->callflag != CTXT_TOPLEVEL;
+        c = c->nextcontext) {
+        if (c->callflag & (CTXT_FUNCTION | CTXT_BUILTIN) ) {
+            SETCAR(t, c->marks);
+            t = CDR(t);
+        }
+    }
+    UNPROTECT(1);
+    return result;
+}
+
 static Rboolean R_IsImportsEnv(SEXP env)
 {
     if (isNull(env) || !isEnvironment(env))

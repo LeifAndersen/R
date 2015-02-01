@@ -232,6 +232,7 @@ void begincontext(RCNTXT * cptr, int flags,
     cptr->callflag = flags;
     cptr->call = syscall;
     cptr->cloenv = env;
+    cptr->marks = NewEnvironment(R_NilValue, R_NilValue, R_EmptyEnv);
     cptr->sysparent = sysp;
     cptr->conexit = R_NilValue;
     cptr->cend = NULL;

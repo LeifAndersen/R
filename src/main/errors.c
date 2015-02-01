@@ -1346,6 +1346,7 @@ SEXP R_GetTraceback(int skip)
 	 c != NULL && c->callflag != CTXT_TOPLEVEL;
 	 c = c->nextcontext)
 	if (c->callflag & (CTXT_FUNCTION | CTXT_BUILTIN) ) {
+            Rprintf("got here\n");
 	    if (ns > 0)
 		ns--;
 	    else

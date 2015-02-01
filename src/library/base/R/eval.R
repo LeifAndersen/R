@@ -44,6 +44,9 @@ parent.env <- function(env)
 `parent.env<-` <- function(env, value)
     .Internal("parent.env<-"(env, value))
 
+continuation.marks <- function(tag)
+    .Internal(continuation.marks(tag))
+
 local <-
     function (expr, envir = new.env())
     eval.parent(substitute(eval(quote(expr), envir)))
