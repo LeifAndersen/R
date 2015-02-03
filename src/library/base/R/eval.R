@@ -44,8 +44,11 @@ parent.env <- function(env)
 `parent.env<-` <- function(env, value)
     .Internal("parent.env<-"(env, value))
 
-continuation.marks <- function(tag)
-    .Internal(continuation.marks(tag))
+add.mark <- function(tag, value)
+    .Internal(add.mark(tag, value))
+
+marks <- function(tag)
+    .Internal(marks(tag))
 
 local <-
     function (expr, envir = new.env())

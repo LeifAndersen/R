@@ -356,6 +356,28 @@ SEXP attribute_hidden do_parentenv(SEXP call, SEXP op, SEXP args, SEXP rho)
     return( ENCLOS(arg) );
 }
 
+SEXP attribute_hidden do_add_mark(SEXP call, SEXP op, SEXP args, SEXP rho)
+{
+    checkArity(op,args);
+    SEXP mark = CAR(args);
+    SEXP val = CAR(CDR(args));
+    if(!isString(mark)) {
+        error(_("argument is not a string"));
+    }
+
+    return AddMark(mark, val);
+}
+
+SEXP attribute_hidden AddMark(SEXP mark, SEXP val)
+{
+    RCNTXT *c = R_GlobalContext;
+    defineVar(mark, val, c->marks);
+
+    PrintValue(R_GetTraceback(0));
+
+    return val;
+}
+
 SEXP attribute_hidden do_cont_marks(SEXP call, SEXP op, SEXP args, SEXP rho)
 {
     checkArity(op, args);
@@ -389,6 +411,8 @@ SEXP attribute_hidden CollectMarks(SEXP name)
         c != NULL && c->callflag != CTXT_TOPLEVEL;
         c = c->nextcontext) {
         if (c->callflag & (CTXT_FUNCTION | CTXT_BUILTIN) ) {
+            PrintValue(findVarInFrame(c->marks, name));
+            //SETCAR(t, findVarInFrame(c->marks, name));
             SETCAR(t, c->marks);
             t = CDR(t);
         }

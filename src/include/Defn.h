@@ -1117,6 +1117,7 @@ SEXP mkQUOTE(SEXP);
 SEXP mkSYMSXP(SEXP, SEXP);
 SEXP mkTrue(void);
 SEXP NewEnvironment(SEXP, SEXP, SEXP);
+SEXP AddMark(SEXP,SEXP);
 SEXP CollectMarks(SEXP);
 void onintr(void);
 RETSIGTYPE onsigusr1(int);
