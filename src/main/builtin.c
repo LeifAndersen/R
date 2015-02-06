@@ -371,9 +371,12 @@ SEXP attribute_hidden do_add_mark(SEXP call, SEXP op, SEXP args, SEXP rho)
 SEXP attribute_hidden AddMark(SEXP mark, SEXP val)
 {
     RCNTXT *c = R_GlobalContext;
-    defineVar(mark, val, c->marks);
 
-    PrintValue(R_GetTraceback(0));
+    if(c != NULL && c->callflag != CTXT_TOPLEVEL) {
+      c = c->nextcontext;
+    }
+
+    defineVar(mark, val, c->marks);
 
     return val;
 }
