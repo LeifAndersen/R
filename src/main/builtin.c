@@ -356,6 +356,82 @@ SEXP attribute_hidden do_parentenv(SEXP call, SEXP op, SEXP args, SEXP rho)
     return( ENCLOS(arg) );
 }
 
+SEXP attribute_hidden CollectMarks(SEXP name)
+{
+    SEXP result, t;
+    RCNTXT *c = R_GlobalContext;
+    RMARKS *m;
+    int n = 0;
+
+    /* Get stack length */
+    for(m = &c->marks;
+        m != NULL;
+        m = m->next) {
+        if(m->marks != NULL) {
+            n++;
+        }
+    }
+
+    /* Get marks */
+    PROTECT(result = allocList(n));
+    t = result;
+    for(m = &c->marks;
+        m != NULL;
+        m = m->next) {
+        if(m->marks != NULL) {
+            //PrintValue(findVarInFrame(m->marks, name));
+            //SETCAR(t, findVarInFrame(m->marks, name));
+            SETCAR(t, m->marks);
+            t = CDR(t);
+        }
+    }
+    UNPROTECT(1);
+    return result;
+}
+
+SEXP attribute_hidden do_marks(SEXP call, SEXP op, SEXP args, SEXP rho)
+{
+    checkArity(op, args);
+    SEXP arg = CAR(args);
+    if(!isString(arg)) {
+        error(_("argument is not a string"));
+    }
+
+    return CollectMarks(arg);
+}
+
+SEXP attribute_hidden AddMark(SEXP mark, SEXP val)
+{
+    RCNTXT *c = R_GlobalContext;
+    RMARKS *m;
+
+    /* get context of next frame up */
+    if(c != NULL && c->callflag != CTXT_TOPLEVEL) {
+        c = c->nextcontext;
+    }
+    m = &c->marks;
+
+    /* Create new marks table if needed, add mark */
+    if(m->marks == NULL) {
+        m->marks = NewEnvironment(R_NilValue, R_NilValue, R_EmptyEnv);
+    }
+    defineVar(mark, val, m->marks);
+
+    return val;
+}
+
+SEXP attribute_hidden do_add_mark(SEXP call, SEXP op, SEXP args, SEXP rho)
+{
+    checkArity(op,args);
+    SEXP mark = CAR(args);
+    SEXP val = CAR(CDR(args));
+    if(!isString(mark)) {
+        error(_("argument is not a string"));
+    }
+
+    return AddMark(mark, val);
+}
+
 static Rboolean R_IsImportsEnv(SEXP env)
 {
     if (isNull(env) || !isEnvironment(env))

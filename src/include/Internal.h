@@ -287,6 +287,8 @@ SEXP do_pack(SEXP, SEXP, SEXP, SEXP);
 SEXP do_packBits(SEXP, SEXP, SEXP, SEXP);
 SEXP do_paren(SEXP, SEXP, SEXP, SEXP);
 SEXP do_parentenv(SEXP, SEXP, SEXP, SEXP);
+SEXP do_marks(SEXP, SEXP, SEXP, SEXP);
+SEXP do_add_mark(SEXP, SEXP, SEXP, SEXP);
 SEXP do_parentenvgets(SEXP, SEXP, SEXP, SEXP);
 SEXP do_parentframe(SEXP, SEXP, SEXP, SEXP);
 SEXP do_parse(SEXP, SEXP, SEXP, SEXP);

@@ -504,6 +504,12 @@ typedef struct RPRSTACK {
     struct RPRSTACK *next;
 } RPRSTACK;
 
+/* Continuation Marks Structure */
+typedef struct RMARKS {
+    struct RMARKS *next;        /* Next RMARKS */
+    SEXP marks;                 /* Marks */
+} RMARKS;
+
 /* Evaluation Context Structure */
 typedef struct RCNTXT {
     struct RCNTXT *nextcontext;	/* The next context up the chain */
@@ -517,6 +523,7 @@ typedef struct RCNTXT {
     SEXP call;			/* The call that effected this context*/
     SEXP cloenv;		/* The environment */
     SEXP conexit;		/* Interpreted "on.exit" code */
+    RMARKS marks;              /* Marks */
     void (*cend)(void *);	/* C "on.exit" thunk */
     void *cenddata;		/* data for C "on.exit" thunk */
     void *vmax;		        /* top of R_alloc stack */
@@ -826,6 +833,7 @@ LibExtern Rboolean UseInternet2;
 # define allocCharsxp		Rf_allocCharsxp
 # define asVecSize		Rf_asVecSize
 # define begincontext		Rf_begincontext
+# define beginmarks             RF_beginmarks
 # define BindDomain		Rf_BindDomain
 # define check_stack_balance	Rf_check_stack_balance
 # define check1arg		Rf_check1arg
@@ -856,6 +864,7 @@ LibExtern Rboolean UseInternet2;
 # define EncodeString           Rf_EncodeString
 # define EnsureString 		Rf_EnsureString
 # define endcontext		Rf_endcontext
+# define endmarks               Rf_endmarks
 # define envlength		Rf_envlength
 # define ErrorMessage		Rf_ErrorMessage
 # define evalList		Rf_evalList
@@ -1176,8 +1185,10 @@ SEXP vectorIndex(SEXP, SEXP, int, int, int, SEXP, Rboolean);
 
 #ifdef R_USE_SIGNALS
 void begincontext(RCNTXT*, int, SEXP, SEXP, SEXP, SEXP, SEXP);
+void beginmarks(RMARKS*, RCNTXT*);
 SEXP dynamicfindVar(SEXP, RCNTXT*);
 void endcontext(RCNTXT*);
+void endmarks(RMARKS*);
 int framedepth(RCNTXT*);
 void R_InsertRestartHandlers(RCNTXT *, Rboolean);
 void NORET R_JumpToContext(RCNTXT *, int, SEXP);

@@ -251,6 +251,8 @@ void begincontext(RCNTXT * cptr, int flags,
     cptr->nextcontext = R_GlobalContext;
     cptr->returnValue = NULL;
 
+    beginmarks(&cptr->marks, cptr);
+
     R_GlobalContext = cptr;
 }
 
@@ -275,9 +277,35 @@ void endcontext(RCNTXT * cptr)
     }
     if (R_ExitContext == cptr)
     	R_ExitContext = NULL;
+    endmarks(&cptr->marks);
     R_GlobalContext = cptr->nextcontext;
 }
 
+/* beginmarks - Begin marks (in a context)*/
+
+void beginmarks(RMARKS * marks, RCNTXT * cptr)
+{
+    RMARKS* m;
+    /* marks->marks = NewEnvironment(R_NilValue, R_NilValue, R_EmptyEnv); */
+    marks->marks = NULL;
+    if(&cptr->nextcontext == NULL) {
+        marks->next = NULL;
+    } else {
+        m = &cptr->nextcontext->marks;
+        if(m->marks == NULL) {
+            marks->next = m->next;
+        } else {
+            marks->next = m;
+        }
+    }
+}
+
+/* marks */
+
+void endmarks(RMARKS * marks)
+{
+    /* Nothing to do? */
+}
 
 /* findcontext - find the correct context */
 
