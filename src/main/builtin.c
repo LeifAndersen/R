@@ -356,6 +356,39 @@ SEXP attribute_hidden do_parentenv(SEXP call, SEXP op, SEXP args, SEXP rho)
     return( ENCLOS(arg) );
 }
 
+SEXP attribute_hidden CollectMarks(SEXP name)
+{
+    return R_NilValue;
+}
+
+SEXP attribute_hidden do_marks(SEXP call, SEXP op, SEXP args, SEXP rho)
+{
+    checkArity(op, args);
+    SEXP arg = CAR(args);
+    if(!isString(arg)) {
+        error(_("argument is not a string"));
+    }
+
+    return CollectMarks(arg);
+}
+
+SEXP attribute_hidden AddMark(SEXP mark, SEXP val)
+{
+    return R_NilValue;
+}
+
+SEXP attribute_hidden do_add_mark(SEXP call, SEXP op, SEXP args, SEXP rho)
+{
+    checkArity(op,args);
+    SEXP mark = CAR(args);
+    SEXP val = CAR(CDR(args));
+    if(!isString(mark)) {
+        error(_("argument is not a string"));
+    }
+
+    return AddMark(mark, val);
+}
+
 static Rboolean R_IsImportsEnv(SEXP env)
 {
     if (isNull(env) || !isEnvironment(env))
