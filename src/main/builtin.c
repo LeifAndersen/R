@@ -301,7 +301,7 @@ SEXP attribute_hidden do_envirgets(SEXP call, SEXP op, SEXP args, SEXP rho)
 	SET_CLOENV(s, env);
     }
     else if (isNull(env) || isEnvironment(env) ||
-	isEnvironment(env = simple_as_environment(env)))
+             isEnvironment(env = simple_as_environment(env)))
 	setAttrib(s, R_DotEnvSymbol, env);
     else
 	error(_("replacement object is not an environment"));
@@ -327,9 +327,9 @@ SEXP attribute_hidden do_newenv(SEXP call, SEXP op, SEXP args, SEXP rho)
 	error(_("use of NULL environment is defunct"));
 	enclos = R_BaseEnv;
     } else
-    if( !isEnvironment(enclos)   &&
-	!isEnvironment((enclos = simple_as_environment(enclos))))
-	error(_("'enclos' must be an environment"));
+        if( !isEnvironment(enclos)   &&
+            !isEnvironment((enclos = simple_as_environment(enclos))))
+            error(_("'enclos' must be an environment"));
 
     if( hash ) {
 	args = CDR(args);
@@ -358,7 +358,34 @@ SEXP attribute_hidden do_parentenv(SEXP call, SEXP op, SEXP args, SEXP rho)
 
 SEXP attribute_hidden CollectMarks(SEXP name)
 {
-    return R_NilValue;
+    SEXP result, t, m;
+    RCNTXT *c;
+    int n = 0;
+
+    /* Get stack frame of first mark */
+    for (c = R_GlobalContext;
+         c != NULL && c->callflag != CTXT_TOPLEVEL && c->marks == R_NilValue;
+         c = c->nextcontext) { }
+
+    /* Get mark count */
+    for (m = c->marks;
+         m != R_EmptyEnv;
+         m = ENCLOS(m)) {
+        n = n + 1;
+    }
+
+    /* Get marks */
+    PROTECT(result = allocList(n));
+    t = result;
+    for (m = c->marks;
+         m != R_EmptyEnv;
+         m = ENCLOS(m)) {
+        SETCAR(t, m);
+        t = CDR(t);
+    }
+
+    UNPROTECT(1);
+    return result;
 }
 
 SEXP attribute_hidden do_marks(SEXP call, SEXP op, SEXP args, SEXP rho)
@@ -374,7 +401,36 @@ SEXP attribute_hidden do_marks(SEXP call, SEXP op, SEXP args, SEXP rho)
 
 SEXP attribute_hidden AddMark(SEXP mark, SEXP val)
 {
-    return R_NilValue;
+    RCNTXT *c = R_GlobalContext;
+
+    /* Get context of next frame up */
+    if(c != NULL && c->callflag != CTXT_TOPLEVEL) {
+        c = c->nextcontext;
+    }
+
+    if(c == NULL) {
+        return val;
+    }
+
+    if(c->marks == R_NilValue || c->callflag == CTXT_TOPLEVEL) {
+        RCNTXT *parent;
+
+        /* Get next marks up */
+        for(parent = c;
+            parent != NULL && parent->callflag != CTXT_TOPLEVEL && parent->marks == R_NilValue;
+            parent = parent->nextcontext) { }
+
+        if(parent == NULL || parent->callflag == CTXT_TOPLEVEL) {
+            //c->marks = R_NewHashedEnv(R_EmptyEnv, ScalarInteger(10));
+            c->marks = NewEnvironment(R_NilValue, R_NilValue, R_EmptyEnv);
+        } else {
+            //c->marks = R_NewHashedEnv(parent->marks, ScalarInteger(10));
+            c->marks = NewEnvironment(R_NilValue, R_NilValue, parent->marks);
+        }
+    }
+    defineVar(mark, val, c->marks);
+
+    return val;
 }
 
 SEXP attribute_hidden do_add_mark(SEXP call, SEXP op, SEXP args, SEXP rho)

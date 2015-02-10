@@ -233,6 +233,7 @@ void begincontext(RCNTXT * cptr, int flags,
     cptr->call = syscall;
     cptr->cloenv = env;
     cptr->sysparent = sysp;
+    cptr->marks = R_NilValue;
     cptr->conexit = R_NilValue;
     cptr->cend = NULL;
     cptr->promargs = promargs;

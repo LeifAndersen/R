@@ -516,6 +516,7 @@ typedef struct RCNTXT {
     SEXP sysparent;		/* environment the closure was called from */
     SEXP call;			/* The call that effected this context*/
     SEXP cloenv;		/* The environment */
+    SEXP marks;                 /* Continuation Marks */
     SEXP conexit;		/* Interpreted "on.exit" code */
     void (*cend)(void *);	/* C "on.exit" thunk */
     void *cenddata;		/* data for C "on.exit" thunk */
