@@ -392,19 +392,19 @@ SEXP attribute_hidden do_marks(SEXP call, SEXP op, SEXP args, SEXP rho)
 {
     checkArity(op, args);
     SEXP arg = CAR(args);
-    if(!isString(arg)) {
+    if(!isSymbol(arg)) {
         error(_("argument is not a string"));
     }
 
     return CollectMarks(arg);
 }
 
-SEXP attribute_hidden AddMark(SEXP mark, SEXP val)
+SEXP attribute_hidden AddMark(SEXP mark, SEXP val, int internal)
 {
     RCNTXT *c = R_GlobalContext;
 
     /* Get context of next frame up */
-    if(c != NULL && c->callflag != CTXT_TOPLEVEL) {
+    if(!internal && c != NULL && c->callflag != CTXT_TOPLEVEL) {
         c = c->nextcontext;
     }
 
@@ -438,11 +438,11 @@ SEXP attribute_hidden do_add_mark(SEXP call, SEXP op, SEXP args, SEXP rho)
     checkArity(op,args);
     SEXP mark = CAR(args);
     SEXP val = CAR(CDR(args));
-    if(!isString(mark)) {
+    if(!isSymbol(mark)) {
         error(_("argument is not a string"));
     }
 
-    return AddMark(mark, val);
+    return AddMark(mark, val, 0);
 }
 
 static Rboolean R_IsImportsEnv(SEXP env)
