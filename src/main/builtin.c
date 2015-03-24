@@ -371,7 +371,9 @@ SEXP attribute_hidden CollectMarks(SEXP name)
     for (m = c->marks;
          m != R_EmptyEnv;
          m = ENCLOS(m)) {
-        n = n + 1;
+        if(findVarInFrame3(m, name, TRUE) != R_UnboundValue) {
+            n = n + 1;
+        }
     }
 
     /* Get marks */
@@ -380,8 +382,13 @@ SEXP attribute_hidden CollectMarks(SEXP name)
     for (m = c->marks;
          m != R_EmptyEnv;
          m = ENCLOS(m)) {
-        SETCAR(t, m);
-        t = CDR(t);
+        SEXP r;
+        PROTECT(r = findVarInFrame3(m, name, TRUE));
+        if(r != R_UnboundValue) {
+            SETCAR(t, r);
+            t = CDR(t);
+        }
+        UNPROTECT(1);
     }
 
     UNPROTECT(1);
@@ -392,11 +399,15 @@ SEXP attribute_hidden do_marks(SEXP call, SEXP op, SEXP args, SEXP rho)
 {
     checkArity(op, args);
     SEXP arg = CAR(args);
-    if(!isSymbol(arg)) {
+    if(isSymbol(arg)) {
+        return CollectMarks(arg);
+    } else if(isString(arg)) {
+        return CollectMarks(installTrChar(STRING_ELT(arg, 0)));
+    } else {
         error(_("argument is not a string"));
     }
 
-    return CollectMarks(arg);
+    return R_NilValue;
 }
 
 SEXP attribute_hidden AddMark(SEXP mark, SEXP val, int internal)
@@ -438,11 +449,14 @@ SEXP attribute_hidden do_add_mark(SEXP call, SEXP op, SEXP args, SEXP rho)
     checkArity(op,args);
     SEXP mark = CAR(args);
     SEXP val = CAR(CDR(args));
-    if(!isSymbol(mark)) {
+    if(isSymbol(mark)) {
+        return AddMark(mark, val, 0);
+    } else if(isString(mark)) {
+        return AddMark(installTrChar(STRING_ELT(mark, 0)), val, 0);
+    } else {
         error(_("argument is not a string"));
     }
-
-    return AddMark(mark, val, 0);
+    return R_NilValue;
 }
 
 static Rboolean R_IsImportsEnv(SEXP env)
