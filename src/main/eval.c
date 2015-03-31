@@ -184,10 +184,13 @@ static void lineprof(char* buf, SEXP srcref)
 static void marksprof(char *buf, SEXP marks)
 {
     size_t len;
-    if (marks && !isNull(marks) && (len = strlen(buf)) < PROFLINEMAX) {
+    //Rprintf("%s\n\n", buf);
+    //PrintValue(marks);
+    if (!isNull(marks) && (len = strlen(buf)) < PROFLINEMAX) {
         snprintf(buf+len, PROFBUFSIZ - len, "%s ",
                  CHAR(STRING_ELT(R_lsInternal3(marks, TRUE, TRUE), 0)));
     }
+    //Rprintf("%s\n\n", buf);
 }
 
 /* FIXME: This should be done wih a proper configure test, also making
@@ -249,7 +252,7 @@ static void doprof(int sig)  /* sig is ignored in Windows */
 		strcat(buf, "\" ");
 		if (R_Line_Profiling)
 		    lineprof(buf, cptr->srcref);
-                if (R_Marks_Profiling)
+                if (strlen(buf) < PROFLINEMAX && R_Marks_Profiling)
                     marksprof(buf, cptr->marks);
 	    }
 	}

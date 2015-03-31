@@ -374,7 +374,7 @@ SEXP attribute_hidden CollectMarks(SEXP name)
 
     /* Get mark count */
     for (m = c->marks;
-         m != R_EmptyEnv && m != R_NilValue;
+         m != R_EmptyEnv;
          m = ENCLOS(m)) {
         if(findVarInFrame3(m, name, TRUE) != R_UnboundValue) {
             n = n + 1;
@@ -385,7 +385,7 @@ SEXP attribute_hidden CollectMarks(SEXP name)
     PROTECT(result = allocList(n));
     t = result;
     for (m = c->marks;
-         m != R_EmptyEnv && m != R_NilValue;
+         m != R_EmptyEnv;
          m = ENCLOS(m)) {
         SEXP r;
         PROTECT(r = findVarInFrame3(m, name, TRUE));
@@ -434,11 +434,10 @@ SEXP attribute_hidden AddMark(SEXP mark, SEXP val, int internal)
             parent != NULL && parent->callflag != CTXT_TOPLEVEL && parent->marks == R_NilValue;
             parent = parent->nextcontext) { }
 
-        if(parent == NULL || parent->marks != R_NilValue) {
+        if(parent == NULL || parent->marks == R_NilValue) {
             //c->marks = R_NewHashedEnv(R_EmptyEnv, ScalarInteger(10));
             c->marks = NewEnvironment(R_NilValue, R_NilValue, R_EmptyEnv);
         } else {
-            Rprintf("making env\n");
             //c->marks = R_NewHashedEnv(parent->marks, ScalarInteger(10));
             c->marks = NewEnvironment(R_NilValue, R_NilValue, parent->marks);
         }
