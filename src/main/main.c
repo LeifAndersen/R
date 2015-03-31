@@ -812,6 +812,7 @@ void setup_Rmainloop(void)
     R_Toplevel.call = R_NilValue;
     R_Toplevel.cloenv = R_BaseEnv;
     R_Toplevel.sysparent = R_BaseEnv;
+    R_Toplevel.marks = R_NilValue;
     R_Toplevel.conexit = R_NilValue;
     R_Toplevel.vmax = NULL;
     R_Toplevel.nodestack = R_BCNodeStackTop;

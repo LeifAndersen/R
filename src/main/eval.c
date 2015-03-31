@@ -104,6 +104,7 @@ static FILE *R_ProfileOutfile = NULL;
 static int R_Mem_Profiling=0;
 static int R_GC_Profiling = 0;                     /* indicates GC profiling */
 static int R_Line_Profiling = 0;                   /* indicates line profiling, and also counts the filenames seen (+1) */
+static int R_Marks_Profiling = 0;                  /* indicates marks profiling */
 static char **R_Srcfiles;			   /* an array of pointers into the filename buffer */
 static size_t R_Srcfile_bufcount;                  /* how big is the array above? */
 static SEXP R_Srcfiles_buffer = NULL;              /* a big RAWSXP to use as a buffer for filenames and pointers to them */
@@ -180,6 +181,15 @@ static void lineprof(char* buf, SEXP srcref)
     }
 }
 
+static void marksprof(char *buf, SEXP marks)
+{
+    size_t len;
+    if (marks && !isNull(marks) && (len = strlen(buf)) < PROFLINEMAX) {
+        snprintf(buf+len, PROFBUFSIZ - len, "%s ",
+                 CHAR(STRING_ELT(R_lsInternal3(marks, TRUE, TRUE), 0)));
+    }
+}
+
 /* FIXME: This should be done wih a proper configure test, also making
    sure that the pthreads library is linked in. LT */
 #ifndef Win32
@@ -188,7 +198,7 @@ static void lineprof(char* buf, SEXP srcref)
 # define HAVE_PTHREAD
 #endif
 #ifdef HAVE_PTHREAD
-# include <pthread.h>
+
 static pthread_t R_profiled_thread;
 # endif
 #endif
@@ -239,6 +249,8 @@ static void doprof(int sig)  /* sig is ignored in Windows */
 		strcat(buf, "\" ");
 		if (R_Line_Profiling)
 		    lineprof(buf, cptr->srcref);
+                if (R_Marks_Profiling)
+                    marksprof(buf, cptr->marks);
 	    }
 	}
     }
@@ -310,7 +322,8 @@ static void R_EndProfiling(void)
 
 static void R_InitProfiling(SEXP filename, int append, double dinterval,
 			    int mem_profiling, int gc_profiling,
-			    int line_profiling, int numfiles, int bufsize)
+			    int line_profiling, int marks_profiling,
+                            int numfiles, int bufsize)
 {
 #ifndef Win32
     struct itimerval itv;
@@ -332,6 +345,8 @@ static void R_InitProfiling(SEXP filename, int append, double dinterval,
 	fprintf(R_ProfileOutfile, "GC profiling: ");
     if(line_profiling)
 	fprintf(R_ProfileOutfile, "line profiling: ");
+    if(marks_profiling)
+        fprintf(R_ProfileOutfile, "marks profiling: ");
     fprintf(R_ProfileOutfile, "sample.interval=%d\n", interval);
 
     R_Mem_Profiling=mem_profiling;
@@ -340,8 +355,9 @@ static void R_InitProfiling(SEXP filename, int append, double dinterval,
 
     R_Profiling_Error = 0;
     R_Line_Profiling = line_profiling;
+    R_Marks_Profiling = marks_profiling;
     R_GC_Profiling = gc_profiling;
-    if (line_profiling) {
+    if (line_profiling || R_Marks_Profiling) {
 	/* Allocate a big RAW vector to use as a buffer.  The first len1 bytes are an array of pointers
 	   to strings; the actual strings are stored in the second len2 bytes. */
 	R_Srcfile_bufcount = numfiles;
@@ -382,7 +398,7 @@ static void R_InitProfiling(SEXP filename, int append, double dinterval,
 SEXP do_Rprof(SEXP args)
 {
     SEXP filename;
-    int append_mode, mem_profiling, gc_profiling, line_profiling;
+    int append_mode, mem_profiling, gc_profiling, line_profiling, marks_profiling;
     double dinterval;
     int numfiles, bufsize;
 
@@ -400,6 +416,7 @@ SEXP do_Rprof(SEXP args)
     mem_profiling = asLogical(CAR(args));     args = CDR(args);
     gc_profiling = asLogical(CAR(args));      args = CDR(args);
     line_profiling = asLogical(CAR(args));    args = CDR(args);
+    marks_profiling = asLogical(CAR(args));   args = CDR(args);
     numfiles = asInteger(CAR(args));	      args = CDR(args);
     if (numfiles < 0)
 	error(_("invalid '%s' argument"), "numfiles");
@@ -410,7 +427,8 @@ SEXP do_Rprof(SEXP args)
     filename = STRING_ELT(filename, 0);
     if (LENGTH(filename))
 	R_InitProfiling(filename, append_mode, dinterval, mem_profiling,
-			gc_profiling, line_profiling, numfiles, bufsize);
+			gc_profiling, line_profiling, marks_profiling,
+                        numfiles, bufsize);
     else
 	R_EndProfiling();
     return R_NilValue;

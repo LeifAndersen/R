@@ -367,9 +367,14 @@ SEXP attribute_hidden CollectMarks(SEXP name)
          c != NULL && c->callflag != CTXT_TOPLEVEL && c->marks == R_NilValue;
          c = c->nextcontext) { }
 
+    /* If no continuation marks. */
+    if(c == NULL || c->marks == R_NilValue) {
+      return R_NilValue;
+    }
+
     /* Get mark count */
     for (m = c->marks;
-         m != R_EmptyEnv;
+         m != R_EmptyEnv && m != R_NilValue;
          m = ENCLOS(m)) {
         if(findVarInFrame3(m, name, TRUE) != R_UnboundValue) {
             n = n + 1;
@@ -380,7 +385,7 @@ SEXP attribute_hidden CollectMarks(SEXP name)
     PROTECT(result = allocList(n));
     t = result;
     for (m = c->marks;
-         m != R_EmptyEnv;
+         m != R_EmptyEnv && m != R_NilValue;
          m = ENCLOS(m)) {
         SEXP r;
         PROTECT(r = findVarInFrame3(m, name, TRUE));
@@ -417,13 +422,11 @@ SEXP attribute_hidden AddMark(SEXP mark, SEXP val, int internal)
     /* Get context of next frame up */
     if(!internal && c != NULL && c->callflag != CTXT_TOPLEVEL) {
         c = c->nextcontext;
+    } else {
+        error(_("at top of stack"));
     }
 
-    if(c == NULL) {
-        return val;
-    }
-
-    if(c->marks == R_NilValue || c->callflag == CTXT_TOPLEVEL) {
+    if(c->marks == R_NilValue) {
         RCNTXT *parent;
 
         /* Get next marks up */
@@ -431,13 +434,15 @@ SEXP attribute_hidden AddMark(SEXP mark, SEXP val, int internal)
             parent != NULL && parent->callflag != CTXT_TOPLEVEL && parent->marks == R_NilValue;
             parent = parent->nextcontext) { }
 
-        if(parent == NULL || parent->callflag == CTXT_TOPLEVEL) {
+        if(parent == NULL || parent->marks != R_NilValue) {
             //c->marks = R_NewHashedEnv(R_EmptyEnv, ScalarInteger(10));
             c->marks = NewEnvironment(R_NilValue, R_NilValue, R_EmptyEnv);
         } else {
+            Rprintf("making env\n");
             //c->marks = R_NewHashedEnv(parent->marks, ScalarInteger(10));
             c->marks = NewEnvironment(R_NilValue, R_NilValue, parent->marks);
         }
+        //asm("int3");
     }
     defineVar(mark, val, c->marks);
 
