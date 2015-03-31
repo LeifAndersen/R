@@ -184,13 +184,21 @@ static void lineprof(char* buf, SEXP srcref)
 static void marksprof(char *buf, SEXP marks)
 {
     size_t len;
-    //Rprintf("%s\n\n", buf);
-    //PrintValue(marks);
-    if (!isNull(marks) && (len = strlen(buf)) < PROFLINEMAX) {
-        snprintf(buf+len, PROFBUFSIZ - len, "%s ",
-                 CHAR(STRING_ELT(R_lsInternal3(marks, TRUE, TRUE), 0)));
+    SEXP m;
+    if(marks && !isNull(marks) && (len = strlen(buf)) < PROFLINEMAX) {
+        snprintf(buf+len, PROFBUFSIZ - len, "{ ");
+        for(m = FRAME(marks); m != R_NilValue; m = CDR(m)) {
+            if ((len = strlen(buf)) < PROFLINEMAX) {
+                /* really? */
+                snprintf(buf+len, PROFBUFSIZ - len, "[\"%s\":\"%s\"], ",
+                         CHAR(PRINTNAME(TAG(m))),
+                         CHAR(STRING_ELT(CAR(m), 0)));
+            }
+        }
     }
-    //Rprintf("%s\n\n", buf);
+    if(marks && !isNull(marks) && (len = strlen(buf)) < PROFLINEMAX) {
+        snprintf(buf+len, PROFBUFSIZ - len, "} ");
+    }
 }
 
 /* FIXME: This should be done wih a proper configure test, also making
@@ -252,10 +260,10 @@ static void doprof(int sig)  /* sig is ignored in Windows */
 		strcat(buf, "\" ");
 		if (R_Line_Profiling)
 		    lineprof(buf, cptr->srcref);
-                if (strlen(buf) < PROFLINEMAX && R_Marks_Profiling)
-                    marksprof(buf, cptr->marks);
 	    }
 	}
+        if (strlen(buf) < PROFLINEMAX && R_Marks_Profiling)
+          marksprof(buf, cptr->marks);
     }
 
     /* I believe it would be slightly safer to place this _after_ the
