@@ -181,18 +181,52 @@ static void lineprof(char* buf, SEXP srcref)
     }
 }
 
+static void base64_encode(char *proxyUser, char *out)
+{
+    /* Conversion table.  */
+    static char tbl[64] = {
+	'A','B','C','D','E','F','G','H',
+	'I','J','K','L','M','N','O','P',
+	'Q','R','S','T','U','V','W','X',
+	'Y','Z','a','b','c','d','e','f',
+	'g','h','i','j','k','l','m','n',
+	'o','p','q','r','s','t','u','v',
+	'w','x','y','z','0','1','2','3',
+	'4','5','6','7','8','9','+','/'
+    };
+    char *s = proxyUser;
+    int i, length;
+    unsigned char *p = (unsigned char *)out;
+
+    length = (int) strlen(s);
+    for (i = 0; i < length; i += 3) {
+	*p++ = tbl[s[i] >> 2];
+	*p++ = tbl[((s[i] & 3) << 4) + (s[i+1] >> 4)];
+	*p++ = tbl[((s[i+1] & 0xf) << 2) + (s[i+2] >> 6)];
+	*p++ = tbl[s[i+2] & 0x3f];
+    }
+    /* Pad the result if necessary...  */
+    if (i == length + 1) *(p - 1) = '=';
+    else if (i == length + 2) *(p - 1) = *(p - 2) = '=';
+    /* ...and zero-terminate it.  */
+    *p = '\0';
+}
+
 static void marksprof(char *buf, SEXP marks)
 {
+    char keybuffer[5000];
+    char valbuffer[5000];
     size_t len;
     SEXP m;
     if(marks && !isNull(marks) && (len = strlen(buf)) < PROFLINEMAX) {
-        snprintf(buf+len, PROFBUFSIZ - len, "{ ");
+        snprintf(buf+len, PROFBUFSIZ - len, "marks{");
         for(m = FRAME(marks); m != R_NilValue; m = CDR(m)) {
             if ((len = strlen(buf)) < PROFLINEMAX) {
                 /* really? */
-                snprintf(buf+len, PROFBUFSIZ - len, "[\"%s\":\"%s\"], ",
-                         CHAR(PRINTNAME(TAG(m))),
-                         CHAR(STRING_ELT(CAR(m), 0)));
+                base64_encode(CHAR(PRINTNAME(TAG(m))), keybuffer);
+                base64_encode(CHAR(STRING_ELT(CAR(m), 0)), valbuffer);
+                snprintf(buf+len, PROFBUFSIZ - len, "[\"%s\":\"%s\"],",
+                         keybuffer, valbuffer);
             }
         }
     }
@@ -262,8 +296,9 @@ static void doprof(int sig)  /* sig is ignored in Windows */
 		    lineprof(buf, cptr->srcref);
 	    }
 	}
-        if (strlen(buf) < PROFLINEMAX && R_Marks_Profiling)
-          marksprof(buf, cptr->marks);
+        if (strlen(buf) < PROFLINEMAX && R_Marks_Profiling) {
+            marksprof(buf, cptr->marks);
+        }
     }
 
     /* I believe it would be slightly safer to place this _after_ the
