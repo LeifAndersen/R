@@ -826,6 +826,10 @@ int Rf_ncols(SEXP);
 int Rf_nrows(SEXP);
 SEXP Rf_nthcdr(SEXP, int);
 
+SEXP R_CollectTopMark(SEXP);
+SEXP R_CollectMarks(SEXP);
+SEXP R_AddMark(SEXP,SEXP,int);
+
 Rboolean Rf_pmatch(SEXP, SEXP, Rboolean);
 Rboolean Rf_psmatch(const char *, const char *, Rboolean);
 void Rf_PrintValue(SEXP);

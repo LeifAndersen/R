@@ -356,7 +356,24 @@ SEXP attribute_hidden do_parentenv(SEXP call, SEXP op, SEXP args, SEXP rho)
     return( ENCLOS(arg) );
 }
 
-SEXP attribute_hidden CollectMarks(SEXP name)
+SEXP attribute_hidden R_CollectTopMark(SEXP name)
+{
+    SEXP result;
+    RCNTXT *c = R_GlobalContext;
+    if(c == NULL || c->marks == R_NilValue) {
+        return R_NilValue;
+    }
+    protect(result = findVarInFrame3(c->marks, name, TRUE));
+    if(result != R_UnboundValue) {
+        UNPROTECT(1);
+        return result;
+    } else {
+        UNPROTECT(1);
+        return R_NilValue;
+    }
+}
+
+SEXP attribute_hidden R_CollectMarks(SEXP name)
 {
     SEXP result, t, m;
     RCNTXT *c;
@@ -369,7 +386,7 @@ SEXP attribute_hidden CollectMarks(SEXP name)
 
     /* If no continuation marks. */
     if(c == NULL || c->marks == R_NilValue) {
-      return R_NilValue;
+        return R_NilValue;
     }
 
     /* Get mark count */
@@ -405,9 +422,9 @@ SEXP attribute_hidden do_marks(SEXP call, SEXP op, SEXP args, SEXP rho)
     checkArity(op, args);
     SEXP arg = CAR(args);
     if(isSymbol(arg)) {
-        return CollectMarks(arg);
+        return R_CollectMarks(arg);
     } else if(isString(arg)) {
-        return CollectMarks(installTrChar(STRING_ELT(arg, 0)));
+        return R_CollectMarks(installTrChar(STRING_ELT(arg, 0)));
     } else {
         error(_("argument is not a string"));
     }
@@ -415,15 +432,17 @@ SEXP attribute_hidden do_marks(SEXP call, SEXP op, SEXP args, SEXP rho)
     return R_NilValue;
 }
 
-SEXP attribute_hidden AddMark(SEXP mark, SEXP val, int internal)
+SEXP attribute_hidden R_AddMark(SEXP mark, SEXP val, int internal)
 {
     RCNTXT *c = R_GlobalContext;
 
     /* Get context of next frame up */
-    if(!internal && c != NULL && c->callflag != CTXT_TOPLEVEL) {
-        c = c->nextcontext;
-    } else {
-        error(_("at top of stack"));
+    if(!internal) {
+        if(c != NULL && c->callflag != CTXT_TOPLEVEL) {
+            c = c->nextcontext;
+        } else {
+            error(_("at top of stack"));
+        }
     }
 
     if(c->marks == R_NilValue) {
@@ -454,9 +473,9 @@ SEXP attribute_hidden do_add_mark(SEXP call, SEXP op, SEXP args, SEXP rho)
     SEXP mark = CAR(args);
     SEXP val = CAR(CDR(args));
     if(isSymbol(mark)) {
-        return AddMark(mark, val, 0);
+        return R_AddMark(mark, val, 0);
     } else if(isString(mark)) {
-        return AddMark(installTrChar(STRING_ELT(mark, 0)), val, 0);
+        return R_AddMark(installTrChar(STRING_ELT(mark, 0)), val, 0);
     } else {
         error(_("argument is not a string"));
     }

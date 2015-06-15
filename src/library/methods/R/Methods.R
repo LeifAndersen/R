@@ -34,6 +34,7 @@ setGeneric <-
              useAsDefault = NULL, genericFunction = NULL,
              simpleInheritanceOnly = NULL)
 {
+    add.mark("s4-dispatch", toString(name));
     if(is.character(.isSingleName(name)))
         stop(gettextf("invalid argument 'name': %s",
                       .isSingleName(name)), domain = NA)
@@ -213,6 +214,9 @@ setGeneric <-
 }
 
 .GenericAssign <- function(name, fdef, where) {
+    # What I would like to do:
+    # name2 <- eval(name)
+    # body(fdef) <- as.call(c(as.name("{"),list(substitute(add.mark("s4-dispatch",name2)),body(fdef))))
     assign(name, fdef, where)
     .cacheGeneric(name, fdef)
     methods <- fdef@default # empty or containing the default
@@ -447,6 +451,7 @@ setMethod <-
 	     where = topenv(parent.frame()), valueClass = NULL,
 	     sealed = FALSE)
 {
+    add.mark("s4-dispatch",toString(substitute(f)));
     ## Methods are stored in metadata in database where.  A generic function will be
     ## assigned if there is no current generic, and the function is NOT a primitive.
     ## Primitives are dispatched from the main C code, and an explicit generic NEVER

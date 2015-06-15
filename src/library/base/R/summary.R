@@ -16,7 +16,10 @@
 #  A copy of the GNU General Public License is available at
 #  http://www.r-project.org/Licenses/
 
-summary <- function (object, ...) UseMethod("summary")
+summary <- function (object, ...) {
+    add.mark("summary", "generic");
+    UseMethod("summary");
+}
 
 summary.default <-
     function(object, ..., digits = max(3L, getOption("digits") - 3L))

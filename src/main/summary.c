@@ -484,6 +484,7 @@ SEXP attribute_hidden do_summary(SEXP call, SEXP op, SEXP args, SEXP env)
        in advance, as we might overflow before we find out.  NULL is
        documented to be the same as integer(0).
     */
+        R_AddMark(install("summary"), mkString("sum"), TRUE);
 	a = args;
 	int_a = 1;
 	while (a != R_NilValue) {
@@ -498,6 +499,7 @@ SEXP attribute_hidden do_summary(SEXP call, SEXP op, SEXP args, SEXP env)
 	break;
 
     case 2:/* min */
+        R_AddMark(install("summary"), mkString("min"), TRUE);
 	DbgP2("do_summary: min(.. na.rm=%d) ", narm);
 	ans_type = INTSXP;
 	zcum.r = R_PosInf;
@@ -505,6 +507,7 @@ SEXP attribute_hidden do_summary(SEXP call, SEXP op, SEXP args, SEXP env)
 	break;
 
     case 3:/* max */
+        R_AddMark(install("summary"), mkString("max"), TRUE);
 	DbgP2("do_summary: max(.. na.rm=%d) ", narm);
 	ans_type = INTSXP;
 	zcum.r = R_NegInf;;
@@ -512,6 +515,7 @@ SEXP attribute_hidden do_summary(SEXP call, SEXP op, SEXP args, SEXP env)
 	break;
 
     case 4:/* prod */
+        R_AddMark(install("summary"), mkString("prod"), TRUE);
 	ans_type = REALSXP;
 	zcum.r = 1.;
 	zcum.i = 0.;

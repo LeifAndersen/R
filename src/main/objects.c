@@ -89,11 +89,15 @@ static SEXP GetObject(RCNTXT *cptr)
 static SEXP applyMethod(SEXP call, SEXP op, SEXP args, SEXP rho, SEXP newvars)
 {
     SEXP ans;
+    SEXP oldMark;
+    PROTECT(oldMark = R_CollectTopMark(install("s3-dispatch")));
     if (TYPEOF(op) == SPECIALSXP) {
 	int save = R_PPStackTop, flag = PRIMPRINT(op);
 	const void *vmax = vmaxget();
 	R_Visible = flag != 1;
+        R_AddMark(install("s3-dispatch"), mkString("antimark"), TRUE);
 	ans = PRIMFUN(op) (call, op, args, rho);
+        R_AddMark(install("s3-dispatch"), oldMark, TRUE);
 	if (flag < 2) R_Visible = flag != 1;
 	check_stack_balance(op, save);
 	vmaxset(vmax);
@@ -108,17 +112,22 @@ static SEXP applyMethod(SEXP call, SEXP op, SEXP args, SEXP rho, SEXP newvars)
 	const void *vmax = vmaxget();
 	PROTECT(args = evalList(args, rho, call, 0));
 	R_Visible = flag != 1;
+        R_AddMark(install("s3-dispatch"), mkString("antimark"), TRUE);
 	ans = PRIMFUN(op) (call, op, args, rho);
+        R_AddMark(install("s3-dispatch"), oldMark, TRUE);
 	if (flag < 2) R_Visible = flag != 1;
 	UNPROTECT(1);
 	check_stack_balance(op, save);
 	vmaxset(vmax);
     }
     else if (TYPEOF(op) == CLOSXP) {
+        R_AddMark(install("s3-dispatch"), mkString("antimark"), TRUE);
 	ans = applyClosure(call, op, args, rho, newvars);
+        R_AddMark(install("s3-dispatch"), oldMark, TRUE);
     }
     else
 	ans = R_NilValue;  /* for -Wall */
+    UNPROTECT(1);
     return ans;
 }
 
@@ -339,6 +348,8 @@ int usemethod(const char *generic, SEXP obj, SEXP call, SEXP args,
     SEXP op;
     int i, nclass;
     RCNTXT *cptr;
+
+    R_AddMark(install("s3-dispatch"), mkString("generic"), TRUE);
 
     /* Get the context which UseMethod was called from. */
 
@@ -1069,6 +1080,7 @@ static SEXP dispatchNonGeneric(SEXP name, SEXP env, SEXP fdef)
     SETCAR(e, fun);
     /* evaluate a call the non-generic with the same arguments and from
        the same environment as the call to the generic version */
+    R_AddMark(install("s4-dispatch"), mkString("antimark"), TRUE);
     value = eval(e, cptr->sysparent);
     UNPROTECT(1);
     return value;
@@ -1081,6 +1093,7 @@ SEXP attribute_hidden do_standardGeneric(SEXP call, SEXP op, SEXP args, SEXP env
 {
     SEXP arg, value, fdef; R_stdGen_ptr_t ptr = R_get_standardGeneric_ptr();
 
+    R_AddMark(install("s4-dispatch"), mkString("generic"), TRUE);
     checkArity(op, args);
     check1arg(args, call, "f");
 
