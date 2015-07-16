@@ -1093,10 +1093,7 @@ SEXP attribute_hidden do_standardGeneric(SEXP call, SEXP op, SEXP args, SEXP env
 {
     SEXP arg, value, fdef; R_stdGen_ptr_t ptr = R_get_standardGeneric_ptr();
 
-    //PrintValue(call);
-    //PrintValue(CAR(args));
-    //PrintValue(substitute(call, R_NilValue));
-    R_AddMark(install("s4-dispatch"), CAR(args) /*mkString("generic")*/, TRUE);
+    R_AddMark(install("s4-dispatch"), CAR(args), TRUE);
     checkArity(op, args);
     check1arg(args, call, "f");
 
