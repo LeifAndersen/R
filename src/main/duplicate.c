@@ -125,6 +125,15 @@ void attribute_hidden reset_duplicate_counter(void)
 
 SEXP duplicate(SEXP s){
     SEXP t;
+    SEXP m, p;
+    static int i = 0;
+    PROTECT(m = install("duplicate"));
+    PROTECT(p = mkString("generic"));
+    R_AddMark(m, p, TRUE);
+    //Rprintf("duplicate\n");
+    //PrintValue(m);
+    //PrintValue(p);
+    UNPROTECT(2);
 
 #ifdef R_PROFILING
     duplicate_counter++;
@@ -138,12 +147,27 @@ SEXP duplicate(SEXP s){
 	    SET_RTRACE(t,1);
     }
 #endif
+    PROTECT(m = install("duplicate"));
+    PROTECT(p = mkString("antimark"));
+    R_AddMark(m, p, TRUE);
+    //Rprintf("endduplicate\n");
+    //PrintValue(m);
+    //PrintValue(p);
+    UNPROTECT(2);
     return t;
 }
 
 SEXP shallow_duplicate(SEXP s)
 {
     SEXP t;
+    SEXP m, p;
+    PROTECT(m = install("duplicate"));
+    PROTECT(p = mkString("generic"));
+    R_AddMark(m, p, TRUE);
+    //Rprintf("shallow_duplicate\n");
+    //PrintValue(m);
+    //PrintValue(p);
+    UNPROTECT(2);
 
 #ifdef R_PROFILING
     duplicate_counter++;
@@ -157,6 +181,13 @@ SEXP shallow_duplicate(SEXP s)
 	    SET_RTRACE(t,1);
     }
 #endif
+    PROTECT(m = install("duplicate"));
+    PROTECT(p = mkString("antimark"));
+    R_AddMark(m, p, TRUE);
+    //Rprintf("endshallow_duplicate\n");
+    //PrintValue(m);
+    //PrintValue(p);
+    UNPROTECT(2);
     return t;
 }
 
@@ -250,6 +281,14 @@ Rboolean R_cycle_detected(SEXP s, SEXP child) {
 static R_INLINE SEXP duplicate_list(SEXP s, Rboolean deep)
 {
     SEXP sp, vp, val;
+    SEXP m, p;
+    PROTECT(m = install("duplicate"));
+    PROTECT(p = mkString("generic"));
+    R_AddMark(m, p, TRUE);
+    //Rprintf("duplicate_list\n");
+    //PrintValue(m);
+    //PrintValue(p);
+    UNPROTECT(2);
     PROTECT(s);
 
     val = R_NilValue;
@@ -263,6 +302,13 @@ static R_INLINE SEXP duplicate_list(SEXP s, Rboolean deep)
 	DUPLICATE_ATTRIB(vp, sp, deep);
     }
     UNPROTECT(2);
+    PROTECT(m = install("duplicate"));
+    PROTECT(p = mkString("antimark"));
+    R_AddMark(m, p, TRUE);
+    //Rprintf("endduplicate_list\n");
+    //PrintValue(m);
+    //PrintValue(p);
+    UNPROTECT(2);
     return val;
 }
 
@@ -270,6 +316,14 @@ static SEXP duplicate1(SEXP s, Rboolean deep)
 {
     SEXP t;
     R_xlen_t i, n;
+    SEXP m, p;
+    PROTECT(m = install("duplicate"));
+    PROTECT(p = mkString("generic"));
+    R_AddMark(m, p, TRUE);
+    //Rprintf("duplicate1\n");
+    //PrintValue(m);
+    //PrintValue(p);
+    UNPROTECT(2);
 
     switch (TYPEOF(s)) {
     case NILSXP:
@@ -359,6 +413,13 @@ static SEXP duplicate1(SEXP s, Rboolean deep)
 	SET_OBJECT(t, OBJECT(s));
 	(IS_S4_OBJECT(s) ? SET_S4_OBJECT(t) : UNSET_S4_OBJECT(t));
     }
+    PROTECT(m = install("duplicate"));
+    PROTECT(p = mkString("antimark"));
+    R_AddMark(m, p, TRUE);
+    //Rprintf("endduplicate1\n");
+    //PrintValue(m);
+    //PrintValue(p);
+    UNPROTECT(2);
     return t;
 }
 

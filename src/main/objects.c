@@ -1045,6 +1045,7 @@ static SEXP dispatchNonGeneric(SEXP name, SEXP env, SEXP fdef)
        calls to standardGeneric during the loading of the methods package */
     SEXP e, value, rho, fun, symbol;
     RCNTXT *cptr;
+    SEXP m, p;
 
     /* find a non-generic function */
     symbol = installTrChar(asChar(name));
@@ -1080,7 +1081,10 @@ static SEXP dispatchNonGeneric(SEXP name, SEXP env, SEXP fdef)
     SETCAR(e, fun);
     /* evaluate a call the non-generic with the same arguments and from
        the same environment as the call to the generic version */
-    R_AddMark(install("s4-dispatch"), mkString("antimark"), TRUE);
+    PROTECT(m = install("s4-dispatch"));
+    PROTECT(p = mkString("antimark"));
+    R_AddMark(m, p, TRUE);
+    UNPROTECT(2);
     value = eval(e, cptr->sysparent);
     UNPROTECT(1);
     return value;
@@ -1092,8 +1096,11 @@ static SEXP get_this_generic(SEXP args);
 SEXP attribute_hidden do_standardGeneric(SEXP call, SEXP op, SEXP args, SEXP env)
 {
     SEXP arg, value, fdef; R_stdGen_ptr_t ptr = R_get_standardGeneric_ptr();
+    SEXP m;
 
-    R_AddMark(install("s4-dispatch"), CAR(args), TRUE);
+    PROTECT(m = install("s4-dispatch"));
+    R_AddMark(m, CAR(args), TRUE);
+    UNPROTECT(1);
     checkArity(op, args);
     check1arg(args, call, "f");
 

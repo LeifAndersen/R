@@ -933,6 +933,8 @@ SEXP applyClosure(SEXP call, SEXP op, SEXP arglist, SEXP rho, SEXP suppliedvars)
     SEXP f, a, tmp;
     RCNTXT cntxt;
 
+    R_AddMark(install("apply"), mkString("generic"), TRUE);
+
     /* formals = list of formal parameters */
     /* actuals = values to be bound to formals */
     /* arglist = the tagged list of arguments */
@@ -1056,8 +1058,11 @@ SEXP applyClosure(SEXP call, SEXP op, SEXP arglist, SEXP rho, SEXP suppliedvars)
 		/* Find out if the body is function with only one statement. */
 		if (isSymbol(CAR(body)))
 			tmp = findFun(CAR(body), rho);
-		else
+		else {
+                        R_AddMark(install("apply"), mkString("antimark"), TRUE);
 			tmp = eval(CAR(body), rho);
+                        R_AddMark(install("apply"), mkString("generic"), TRUE);
+                }
 	}
 	savesrcref = R_Srcref;
 	PROTECT(R_Srcref = getSrcref(getBlockSrcrefs(body), 0));
@@ -1094,13 +1099,17 @@ SEXP applyClosure(SEXP call, SEXP op, SEXP arglist, SEXP rho, SEXP suppliedvars)
 	if (R_ReturnedValue == R_RestartToken) {
 	    cntxt.callflag = CTXT_RETURN;  /* turn restart off */
 	    R_ReturnedValue = R_NilValue;  /* remove restart token */
+            R_AddMark(install("apply"), mkString("antimark"), TRUE);
 	    PROTECT(tmp = eval(body, newrho));
+            R_AddMark(install("apply"), mkString("generic"), TRUE);
 	}
 	else
 	    PROTECT(tmp = R_ReturnedValue);
     }
     else {
+        R_AddMark(install("apply"), mkString("antimark"), TRUE);
 	PROTECT(tmp = eval(body, newrho));
+        R_AddMark(install("apply"), mkString("generic"), TRUE);
     }
     cntxt.returnValue = tmp; /* make it available to on.exit */
     endcontext(&cntxt);
@@ -1110,6 +1119,7 @@ SEXP applyClosure(SEXP call, SEXP op, SEXP arglist, SEXP rho, SEXP suppliedvars)
 	PrintValueRec(call, rho);
     }
     UNPROTECT(3);
+    R_AddMark(install("apply"), mkString("antimark"), TRUE);
     return (tmp);
 }
 
@@ -1487,6 +1497,8 @@ SEXP attribute_hidden do_for(SEXP call, SEXP op, SEXP args, SEXP rho)
     RCNTXT cntxt;
     PROTECT_INDEX vpi;
 
+    R_AddMark(install("for"), mkString("generic"), TRUE);
+
     sym = CAR(args);
     val = CADR(args);
     body = CADDR(args);
@@ -1593,7 +1605,9 @@ SEXP attribute_hidden do_for(SEXP call, SEXP op, SEXP args, SEXP rho)
 	    PrintValue(body);
 	    do_browser(call, op, R_NilValue, rho);
 	}
+        R_AddMark(install("for"), mkString("antimark"), TRUE);
 	eval(body, rho);
+        R_AddMark(install("for"), mkString("generic"), TRUE);
 
     for_next:
 	; /* needed for strict ISO C compliance, according to gcc 2.95.2 */
@@ -1603,6 +1617,7 @@ SEXP attribute_hidden do_for(SEXP call, SEXP op, SEXP args, SEXP rho)
     DECREMENT_REFCNT(val);
     UNPROTECT(5);
     SET_RDEBUG(rho, dbg);
+    R_AddMark(install("for"), mkString("antimark"), TRUE);
     return R_NilValue;
 }
 
@@ -1613,6 +1628,8 @@ SEXP attribute_hidden do_while(SEXP call, SEXP op, SEXP args, SEXP rho)
     volatile int bgn;
     volatile SEXP body;
     RCNTXT cntxt;
+
+    R_AddMark(install("while"), mkString("generic"), TRUE);
 
     checkArity(op, args);
 
@@ -1634,7 +1651,9 @@ SEXP attribute_hidden do_while(SEXP call, SEXP op, SEXP args, SEXP rho)
 		PrintValue(body);
 		do_browser(call, op, R_NilValue, rho);
 	    }
+            R_AddMark(install("while"), mkString("antimark"), TRUE);
 	    eval(body, rho);
+            R_AddMark(install("while"), mkString("generic"), TRUE);
 	    if (RDEBUG(rho) && !R_GlobalContext->browserfinish) {
 		SrcrefPrompt("debug", R_Srcref);
 		Rprintf("(while) ");
@@ -1645,6 +1664,7 @@ SEXP attribute_hidden do_while(SEXP call, SEXP op, SEXP args, SEXP rho)
     }
     endcontext(&cntxt);
     SET_RDEBUG(rho, dbg);
+    R_AddMark(install("while"), mkString("antimark"), TRUE);
     return R_NilValue;
 }
 

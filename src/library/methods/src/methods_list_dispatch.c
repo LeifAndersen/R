@@ -456,6 +456,7 @@ SEXP R_getGeneric(SEXP name, SEXP mustFind, SEXP env, SEXP package)
 SEXP R_standardGeneric(SEXP fname, SEXP ev, SEXP fdef)
 {
     SEXP f_env=R_BaseEnv, mlist=R_NilValue, f, val=R_NilValue, fsym; /* -Wall */
+    SEXP m, p;
     int nprotect = 0;
 
     if(!initialized)
@@ -508,7 +509,10 @@ SEXP R_standardGeneric(SEXP fname, SEXP ev, SEXP fdef)
 	{
 	    SEXP R_execMethod(SEXP, SEXP);
 	    PROTECT(f); nprotect++; /* is this needed?? */
-            R_AddMark(install("s4-dispatch"), mkString("antimark"), TRUE);
+            PROTECT(m = install("s4-dispatch"));
+            PROTECT(p = mkString("antimark"));
+            R_AddMark(m, p, TRUE);
+            UNPROTECT(2);
 	    val = R_execMethod(f, ev);
 	}
 	break;
@@ -517,7 +521,10 @@ SEXP R_standardGeneric(SEXP fname, SEXP ev, SEXP fdef)
 	   default method when a primitive is made generic.  In this
 	   case, return a special marker telling the C code to go on
 	   with the internal computations. */
-      R_AddMark(install("s4-dispatch"), mkString("antimark"), TRUE);
+      PROTECT(m = install("s4-dispatch"));
+      PROTECT(p = mkString("antimark"));
+      R_AddMark(m, p, TRUE);
+      UNPROTECT(2);
       val = R_deferred_default_method();
       break;
     default:
@@ -939,6 +946,7 @@ SEXP R_dispatchGeneric(SEXP fname, SEXP ev, SEXP fdef)
 	siglength, f_env = R_NilValue, method, f, val = R_NilValue;
     char *buf, *bufptr;
     int nargs, i, lwidth = 0;
+    SEXP m, p;
 
     if(!R_mtable) {
 	R_mtable = install(".MTable");
@@ -1030,7 +1038,10 @@ SEXP R_dispatchGeneric(SEXP fname, SEXP ev, SEXP fdef)
     {
 	SEXP R_execMethod(SEXP, SEXP);
 	PROTECT(f); nprotect++; /* is this needed?? */
-        R_AddMark(install("s4-dispatch"), mkString("antimark"), TRUE);
+        PROTECT(m = install("s4-dispatch"));
+        PROTECT(p = mkString("antimark"));
+        R_AddMark(m, p, TRUE);
+        UNPROTECT(2);
 	val = R_execMethod(f, ev);
     }
     break;
@@ -1039,7 +1050,10 @@ SEXP R_dispatchGeneric(SEXP fname, SEXP ev, SEXP fdef)
 	   default method when a primitive is made generic.  In this
 	   case, return a special marker telling the C code to go on
 	   with the internal computations. */
-        R_AddMark(install("s4-dispatch"), mkString("antimark"), TRUE);
+        PROTECT(m = install("s4-dispatch"));
+        PROTECT(p = mkString("antimark"));
+        R_AddMark(m, p, TRUE);
+        UNPROTECT(2);
 	val = R_deferred_default_method();
 	break;
     default:
