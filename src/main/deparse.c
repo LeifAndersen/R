@@ -128,8 +128,8 @@ typedef struct {
     int isS4;
 } LocalParseData;
 
-static SEXP deparse1WithCutoff(SEXP call, Rboolean abbrev, int cutoff,
-			       Rboolean backtick, int opts, int nlines);
+SEXP deparse1WithCutoff(SEXP call, Rboolean abbrev, int cutoff,
+                        Rboolean backtick, int opts, int nlines);
 static void args2buff(SEXP, int, int, LocalParseData *);
 static void deparse2buff(SEXP, LocalParseData *);
 static void print2buff(const char *, LocalParseData *);
@@ -191,8 +191,8 @@ SEXP deparse1w(SEXP call, Rboolean abbrev, int opts)
 			      opts, -1);
 }
 
-static SEXP deparse1WithCutoff(SEXP call, Rboolean abbrev, int cutoff,
-			       Rboolean backtick, int opts, int nlines)
+SEXP deparse1WithCutoff(SEXP call, Rboolean abbrev, int cutoff,
+                        Rboolean backtick, int opts, int nlines)
 {
 /* Arg. abbrev:
 	If abbrev is TRUE, then the returned value

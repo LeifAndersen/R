@@ -214,8 +214,8 @@ static void base64_encode(char *proxyUser, char *out)
 
 static void marksprof(char *buf, SEXP marks)
 {
-    char keybuffer[5000];
-    char valbuffer[5000];
+    char keybuffer[50000];
+    char valbuffer[50000];
     size_t len;
     SEXP m;
     if(marks && !isNull(marks) && (len = strlen(buf)) < PROFLINEMAX) {

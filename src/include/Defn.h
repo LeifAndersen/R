@@ -845,6 +845,7 @@ LibExtern Rboolean UseInternet2;
 # define ddfindVar		Rf_ddfindVar
 # define deparse1		Rf_deparse1
 # define deparse1w		Rf_deparse1w
+# define deparse1WithCutoff     Rf_deparse1WithCutoff
 # define deparse1line		Rf_deparse1line
 # define deparse1s		Rf_deparse1s
 # define DispatchGroup		Rf_DispatchGroup
@@ -1051,6 +1052,7 @@ void DataFrameClass(SEXP);
 SEXP ddfindVar(SEXP, SEXP);
 SEXP deparse1(SEXP,Rboolean,int);
 SEXP deparse1w(SEXP,Rboolean,int);
+SEXP deparse1WithCutoff(SEXP,Rboolean,int,Rboolean,int,int);
 SEXP deparse1line(SEXP,Rboolean);
 SEXP deparse1s(SEXP call);
 int DispatchAnyOrEval(SEXP, SEXP, const char *, SEXP, SEXP, SEXP*, int, int);

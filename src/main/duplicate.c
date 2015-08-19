@@ -23,7 +23,19 @@
 #include <config.h>
 #endif
 
-#include "Defn.h"
+//#include <Rinterface.h>
+//#include "Defn.h"
+
+#define R_USE_SIGNALS 1
+#include <Defn.h>
+#include <Internal.h>
+#include <Print.h>
+#include <Fileio.h>
+#include <Rconnections.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include <R_ext/RS.h> /* S4 bit */
 
@@ -127,8 +139,10 @@ SEXP duplicate(SEXP s){
     SEXP t;
     SEXP m, p;
     static int i = 0;
+    RCNTXT *rcn = R_GlobalContext;
     PROTECT(m = install("duplicate"));
-    PROTECT(p = mkString("generic"));
+    //PROTECT(p = mkString("generic"));
+    PROTECT(p = deparse1WithCutoff(rcn->call, 0, 120, TRUE, DEFAULTDEPARSE, -1));
     R_AddMark(m, p, TRUE);
     //Rprintf("duplicate\n");
     //PrintValue(m);
@@ -161,8 +175,10 @@ SEXP shallow_duplicate(SEXP s)
 {
     SEXP t;
     SEXP m, p;
+    RCNTXT *rcn = R_GlobalContext;
     PROTECT(m = install("duplicate"));
-    PROTECT(p = mkString("generic"));
+    //PROTECT(p = mkString("generic"));
+    PROTECT(p = deparse1WithCutoff(rcn->call, 0, 120, TRUE, DEFAULTDEPARSE, -1));
     R_AddMark(m, p, TRUE);
     //Rprintf("shallow_duplicate\n");
     //PrintValue(m);
@@ -282,8 +298,10 @@ static R_INLINE SEXP duplicate_list(SEXP s, Rboolean deep)
 {
     SEXP sp, vp, val;
     SEXP m, p;
+    RCNTXT *rcn = R_GlobalContext;
     PROTECT(m = install("duplicate"));
-    PROTECT(p = mkString("generic"));
+    //PROTECT(p = mkString("generic"));
+    PROTECT(p = deparse1WithCutoff(rcn->call, 0, 120, TRUE, DEFAULTDEPARSE, -1));
     R_AddMark(m, p, TRUE);
     //Rprintf("duplicate_list\n");
     //PrintValue(m);
@@ -317,8 +335,10 @@ static SEXP duplicate1(SEXP s, Rboolean deep)
     SEXP t;
     R_xlen_t i, n;
     SEXP m, p;
+    RCNTXT *rcn = R_GlobalContext;
     PROTECT(m = install("duplicate"));
-    PROTECT(p = mkString("generic"));
+    PROTECT(p = deparse1WithCutoff(rcn->call, 0, 120, TRUE, DEFAULTDEPARSE, -1));
+    //PROTECT(p = mkString("generic"));
     R_AddMark(m, p, TRUE);
     //Rprintf("duplicate1\n");
     //PrintValue(m);
