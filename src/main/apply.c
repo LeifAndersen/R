@@ -35,6 +35,8 @@ SEXP attribute_hidden do_lapply(SEXP call, SEXP op, SEXP args, SEXP rho)
 {
     PROTECT_INDEX px;
 
+    R_AddMark(install("lapply"), mkString("generic"), TRUE);
+
     checkArity(op, args);
     SEXP X, XX, FUN;
     PROTECT_WITH_INDEX(X =CAR(args), &px);
@@ -72,11 +74,14 @@ SEXP attribute_hidden do_lapply(SEXP call, SEXP op, SEXP args, SEXP rho)
     for(R_xlen_t i = 0; i < n; i++) {
 	if (realIndx) REAL(ind)[0] = (double)(i + 1);
 	else INTEGER(ind)[0] = (int)(i + 1);
+        R_AddMark(install("lapply"), mkString("antimark"), TRUE);
 	tmp = eval(R_fcall, rho);
+        R_AddMark(install("lapply"), mkString("generic"), TRUE);
 	if (MAYBE_REFERENCED(tmp)) tmp = lazy_duplicate(tmp);
 	SET_VECTOR_ELT(ans, i, tmp);
     }
 
+    R_AddMark(install("lapply"), mkString("antimark"), TRUE);
     UNPROTECT(6);
     return ans;
 }
