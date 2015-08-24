@@ -1,5 +1,5 @@
 #  File src/library/base/R/load.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
 #  Copyright (C) 1995-2015 The R Core Team
 #
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 load <- function (file, envir = parent.frame(), verbose = FALSE)
 {
@@ -189,8 +189,7 @@ findPackageEnv <- function(info)
     if(info %in% search()) return(as.environment(info))
     message(gettextf("Attempting to load the environment %s", sQuote(info)),
             domain = NA)
-    pkg <- substr(info, 9L, 1000L)
-    if(require(pkg, character.only=TRUE, quietly = TRUE))
+    if(require(substr(info, 9L, 1000L), character.only = TRUE, quietly = TRUE))
         return(as.environment(info))
     message("Specified environment not found: using '.GlobalEnv' instead")
     .GlobalEnv

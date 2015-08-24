@@ -1,6 +1,6 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
- *  Copyright (C) 2000-2014  The R Core Team.
+ *  Copyright (C) 2000-2015  The R Core Team.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  *
  *
  *      Interfaces to POSIX date-time conversion functions.
@@ -39,16 +39,24 @@
 
 #include <Rmath.h> // Rexp10
 
-// some other header, e.g. math.h, might define it
-#if defined(__GLIBC__) && !defined(_BSD_SOURCE)
-// to get tm_zone, tm_gmtoff defined
-# define _BSD_SOURCE
+// to get tm_zone, tm_gmtoff defined in glibc.
+// some other header, e.g. math.h, might define the macro.
+#if defined HAVE_FEATURES_H
+# include <features.h>
+# ifdef __GNUC_PREREQ
+#  if __GNUC_PREREQ(2,20) && !defined(_DEFAULT_SOURCE_)
+#   define _DEFAULT_SOURCE 1
+#  endif
+# endif
+#endif
+#if defined(HAVE_GLIBC2) && !defined(_DEFAULT_SOURCE_) && !defined(_BSD_SOURCE)
+# define _BSD_SOURCE 1
 #endif
 #include <time.h>
 
 #include <errno.h>
 
-/* 
+/*
 
 There are two implementation paths here.
 
@@ -85,6 +93,8 @@ known OS with 64-bit time_t and complete tables is Linux.
 # define HAVE_TM_GMTOFF 1
 # undef MKTIME_SETS_ERRNO
 # define MKTIME_SETS_ERRNO
+# undef HAVE_WORKING_64BIT_MKTIME
+# define HAVE_WORKING_64BIT_MKTIME 1
 #else
 
 typedef struct tm stm;
@@ -293,14 +303,14 @@ static Rboolean have_broken_mktime(void)
 }
 
 #ifndef HAVE_POSIX_LEAPSECONDS
-/* There have been 25 leapseconds: see .leap.seconds in R
+/* There have (2015/07) been 26 leapseconds: see .leap.seconds in R
  */
-static int n_leapseconds = 25;
+static int n_leapseconds = 26;
 static const time_t leapseconds[] =
 {  78796800, 94694400,126230400,157766400,189302400,220924800,252460800,
   283996800,315532800,362793600,394329600,425865600,489024000,567993600,
   631152000,662688000,709948800,741484800,773020800,820454400,867715200,
-   915148800,1136073600,1230768000,1341100800};
+   915148800,1136073600,1230768000,1341100800,1435708800};
 #endif
 
 static double guess_offset (stm *tm)
@@ -436,7 +446,7 @@ static stm * localtime0(const double *tp, const int local, stm *ltm)
 	OK = !have_broken_mktime() || d > 0.;
     else
 #endif
-	OK = d < 2147483647.0 && 
+	OK = d < 2147483647.0 &&
 	    d > (have_broken_mktime() ? 0. : -2147483647.0);
     if(OK) {
 	t = (time_t) d;
@@ -453,7 +463,7 @@ static stm * localtime0(const double *tp, const int local, stm *ltm)
 	return local ? localtime(&t) : gmtime(&t);
 #endif
     }
-    
+
     /* internal substitute code.
        Like localtime, this returns a pointer to a static struct tm */
 
@@ -632,11 +642,11 @@ static void glibc_fix(stm *tm, int *invalid)
 
 
 static const char ltnames [][7] =
-{ "sec", "min", "hour", "mday", "mon", "year", "wday", "yday", "isdst", 
+{ "sec", "min", "hour", "mday", "mon", "year", "wday", "yday", "isdst",
   "zone",  "gmtoff"};
 
 
-static void 
+static void
 makelt(stm *tm, SEXP ans, R_xlen_t i, int valid, double frac_secs)
 {
     if(valid) {
@@ -658,7 +668,7 @@ makelt(stm *tm, SEXP ans, R_xlen_t i, int valid, double frac_secs)
 }
 
 
-             /* --------- R interfaces --------- */
+	     /* --------- R interfaces --------- */
 
 // We assume time zone names/abbreviations are ASCII, as all known ones are.
 
@@ -736,11 +746,11 @@ SEXP attribute_hidden do_asPOSIXlt(SEXP call, SEXP op, SEXP args, SEXP env)
 	if(!isgmt) {
 	    char *p = "";
 	    // or ptm->tm_zone
-	    if(valid && ptm->tm_isdst >= 0) 
+	    if(valid && ptm->tm_isdst >= 0)
 		p = R_tzname[ptm->tm_isdst];
 	    SET_STRING_ELT(VECTOR_ELT(ans, 9), i, mkChar(p));
 #ifdef HAVE_TM_GMTOFF
-	    INTEGER(VECTOR_ELT(ans, 10))[i] = 
+	    INTEGER(VECTOR_ELT(ans, 10))[i] =
 		valid ? (int)ptm->tm_gmtoff : NA_INTEGER;
 #endif
 	}
@@ -764,7 +774,7 @@ SEXP attribute_hidden do_asPOSIXct(SEXP call, SEXP op, SEXP args, SEXP env)
     SEXP stz, x, ans;
     R_xlen_t n = 0, nlen[9];
     int isgmt = 0, settz = 0;
-    char oldtz[20] = "";
+    char oldtz[1001] = "";
     const char *tz = NULL;
     stm tm;
     double tmp;
@@ -856,7 +866,7 @@ SEXP attribute_hidden do_formatPOSIXlt(SEXP call, SEXP op, SEXP args, SEXP env)
     R_xlen_t n = 0, m, N, nlen[9];
     int UseTZ, settz = 0;
     char buff[300];
-    char oldtz[20] = "";
+    char oldtz[1001] = "";
     stm tm;
 
     checkArity(op, args);
@@ -918,7 +928,7 @@ SEXP attribute_hidden do_formatPOSIXlt(SEXP call, SEXP op, SEXP args, SEXP env)
 	tm.tm_isdst = INTEGER(VECTOR_ELT(x, 8))[i%nlen[8]];
 	if(have_zone) {
 	    strncpy(tm_zone, CHAR(STRING_ELT(VECTOR_ELT(x, 9), i)), 20);
-            tm_zone[20 - 1] = '\0';
+	    tm_zone[20 - 1] = '\0';
 #ifdef HAVE_TM_ZONE
 	    tm.tm_zone = tm_zone;
 #elif defined USE_INTERNAL_MKTIME
@@ -949,7 +959,7 @@ SEXP attribute_hidden do_formatPOSIXlt(SEXP call, SEXP op, SEXP args, SEXP env)
 		if (p) {
 		    memset(buf2, 0, n);
 		    strncpy(buf2, q, p - q);
-		    if(have_zone) 
+		    if(have_zone)
 			strcat(buf2, tm_zone);
 		    else
 			strcat(buf2, tm.tm_isdst > 0 ? R_tzname[1] : R_tzname[0]);
@@ -982,11 +992,16 @@ SEXP attribute_hidden do_formatPOSIXlt(SEXP call, SEXP op, SEXP args, SEXP env)
 			strcat(buf2, p+nused);
 		    }
 		}
+		// The overflow behaviour is not determined by C99.
+		// We assume truncation, and ensure termination.
 #ifdef USE_INTERNAL_MKTIME
 		R_strftime(buff, 256, buf2, &tm);
 #else
 		strftime(buff, 256, buf2, &tm);
 #endif
+		buff[256] = '\0';
+		// Now assume tzone abbreviated name is < 40 bytes,
+		// but they are currently 3 or 4 bytes.
 		if(UseTZ) {
 		    if(LENGTH(x) >= 10) {
 			const char *p = CHAR(STRING_ELT(VECTOR_ELT(x, 9), i));
@@ -1006,8 +1021,8 @@ SEXP attribute_hidden do_formatPOSIXlt(SEXP call, SEXP op, SEXP args, SEXP env)
 	    }
 	}
     }
-    UNPROTECT(2);
     if(settz) reset_tz(oldtz);
+    UNPROTECT(2);
     return ans;
 }
 
@@ -1018,7 +1033,7 @@ SEXP attribute_hidden do_strptime(SEXP call, SEXP op, SEXP args, SEXP env)
     int invalid, isgmt = 0, settz = 0, offset;
     stm tm, tm2, *ptm = &tm;
     const char *tz = NULL;
-    char oldtz[20] = "";
+    char oldtz[1001] = "";
     double psecs = 0.0;
     R_xlen_t n, m, N;
 
@@ -1056,7 +1071,7 @@ SEXP attribute_hidden do_strptime(SEXP call, SEXP op, SEXP args, SEXP env)
 	SET_STRING_ELT(tzone, 0, mkChar(tz));
 	SET_STRING_ELT(tzone, 1, mkChar(R_tzname[0]));
 	SET_STRING_ELT(tzone, 2, mkChar(R_tzname[1]));
-	
+
     } else PROTECT(tzone); // for balance
 
     n = XLENGTH(x); m = XLENGTH(sformat);
@@ -1142,7 +1157,7 @@ SEXP attribute_hidden do_strptime(SEXP call, SEXP op, SEXP args, SEXP env)
 	    }
 	    SET_STRING_ELT(VECTOR_ELT(ans, 9), i, mkChar(p));
 #ifdef HAVE_TM_GMTOFF
-	    INTEGER(VECTOR_ELT(ans, 10))[i] = 
+	    INTEGER(VECTOR_ELT(ans, 10))[i] =
 		invalid ? NA_INTEGER : (int)tm.tm_gmtoff;
 #endif
 	}

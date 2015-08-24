@@ -1,5 +1,5 @@
 #  File src/library/base/R/character.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
 #  Copyright (C) 1995-2013 The R Core Team
 #
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 substr <- function(x, start, stop)
 {
@@ -191,3 +191,10 @@ dQuote <- function(x)
 strtoi <-
 function(x, base = 0L)
     .Internal(strtoi(as.character(x), as.integer(base)))
+
+strrep <-
+function(x, times)
+{
+    if(!is.character(x)) x <- as.character(x)
+    .Internal(strrep(x, as.integer(times)))
+}

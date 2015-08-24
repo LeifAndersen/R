@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
  *  Copyright (C) 1995, 1996  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 1997--2014  The R Core Team
+ *  Copyright (C) 1997--2015  The R Core Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Pulic License as published by
@@ -15,14 +15,14 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 /* The character functions in this file are
 
 nzchar nchar substr substr<- abbreviate tolower toupper chartr strtrim
 
-and the utility 
+and the utility
 
 make.names
 
@@ -74,6 +74,7 @@ abbreviate chartr make.names strtrim tolower toupper give error.
 #include <errno.h>
 
 #include <R_ext/RS.h>  /* for Calloc/Free */
+#include <Rinternals.h> // R_nchar()
 
 #include <rlocale.h>
 
@@ -96,9 +97,15 @@ static R_StringBuffer cbuff = {NULL, 0, MAXELTSIZE};
 SEXP attribute_hidden do_nzchar(SEXP call, SEXP op, SEXP args, SEXP env)
 {
     SEXP x, ans;
-    R_xlen_t i, len;
+    int nargs = length(args);
 
-    checkArity(op, args);
+    // checkArity(op, args);  .Primitive()  &  may have 1 or 2 args now
+    if (nargs < 1 || nargs > 2)
+	errorcall(call,
+		  ngettext("%d argument passed to '%s' which requires %d to %d",
+			   "%d arguments passed to '%s' which requires %d to %d",
+			   (unsigned long) nargs),
+		  nargs, PRIMNAME(op), 1, 2);
     check1arg(args, call, "x");
 
     if (isFactor(CAR(args)))
@@ -106,102 +113,151 @@ SEXP attribute_hidden do_nzchar(SEXP call, SEXP op, SEXP args, SEXP env)
     PROTECT(x = coerceVector(CAR(args), STRSXP));
     if (!isString(x))
 	error(_("'%s' requires a character vector"), "nzchar()");
-    len = XLENGTH(x);
+
+    int keepNA = FALSE; // the default
+    if(nargs > 1) {
+	keepNA = asLogical(CADR(args));
+	if (keepNA == NA_LOGICAL) keepNA = FALSE;
+    }
+    R_xlen_t i, len = XLENGTH(x);
     PROTECT(ans = allocVector(LGLSXP, len));
-    for (i = 0; i < len; i++)
-	LOGICAL(ans)[i] = LENGTH(STRING_ELT(x, i)) > 0;
+    if (keepNA)
+	for (i = 0; i < len; i++) {
+	    SEXP sxi = STRING_ELT(x, i);
+	    LOGICAL(ans)[i] = (sxi == NA_STRING) ? NA_LOGICAL : LENGTH(sxi) > 0;
+	}
+    else
+	for (i = 0; i < len; i++)
+	    LOGICAL(ans)[i] = LENGTH(STRING_ELT(x, i)) > 0;
     UNPROTECT(2);
     return ans;
 }
 
+int R_nchar(SEXP string, nchar_type type_,
+	    Rboolean allowNA, Rboolean keepNA, const char* msg_name)
+{
+    if (string == NA_STRING)
+	return keepNA ? NA_INTEGER : 2;
+    // else :
+    switch(type_) {
+    case Bytes:
+	return LENGTH(string);
+	break;
+    case Chars:
+	if (IS_UTF8(string)) {
+	    const char *p = CHAR(string);
+	    if (!utf8Valid(p)) {
+		if (!allowNA)
+		    error(_("invalid multibyte string, %s"), msg_name);
+		return NA_INTEGER;
+	    } else {
+		int nc = 0;
+		for( ; *p; p += utf8clen(*p)) nc++;
+		return nc;
+	    }
+	} else if (IS_BYTES(string)) {
+	    if (!allowNA) /* could do chars 0 */
+		error(_("number of characters is not computable in \"bytes\" encoding, %s"),
+		      msg_name);
+	    return NA_INTEGER;
+	} else if (mbcslocale) {
+	    int nc = (int) mbstowcs(NULL, translateChar(string), 0);
+	    if (!allowNA && nc < 0)
+		error(_("invalid multibyte string, %s"), msg_name);
+	    return (nc >= 0 ? nc : NA_INTEGER);
+	} else
+	    return ((int) strlen(translateChar(string)));
+	break;
+    case Width:
+	if (IS_UTF8(string)) {
+	    const char *p = CHAR(string);
+	    if (!utf8Valid(p)) {
+		if (!allowNA)
+		    error(_("invalid multibyte string, %s"), msg_name);
+		return NA_INTEGER;
+	    } else {
+		wchar_t wc1;
+		int nc = 0;
+		for( ; *p; p += utf8clen(*p)) {
+		    utf8toucs(&wc1, p);
+		    nc += Ri18n_wcwidth(wc1);
+		}
+		return nc;
+	    }
+	} else if (IS_BYTES(string)) {
+	    if (!allowNA) /* could do width 0 */
+		error(_("width is not computable for %s in \"bytes\" encoding"),
+		      msg_name);
+	    return NA_INTEGER;
+	} else if (mbcslocale) {
+	    const char *xi = translateChar(string);
+	    int nc = (int) mbstowcs(NULL, xi, 0);
+	    if (nc >= 0) {
+		const void *vmax = vmaxget();
+		wchar_t *wc = (wchar_t *)
+		    R_AllocStringBuffer((nc+1)*sizeof(wchar_t), &cbuff);
+		mbstowcs(wc, xi, nc + 1);
+		int nci18n = Ri18n_wcswidth(wc, 2147483647);
+		vmaxset(vmax);
+		return (nci18n < 1) ? nc : nci18n;
+	    } else if (allowNA)
+		error(_("invalid multibyte string, %s"), msg_name);
+	    else
+		return NA_INTEGER;
+	} else
+	    return (int) strlen(translateChar(string));
+
+    } // switch
+    return NA_INTEGER; // -Wall
+} // R_nchar()
 
 SEXP attribute_hidden do_nchar(SEXP call, SEXP op, SEXP args, SEXP env)
 {
     SEXP d, s, x, stype;
-    R_xlen_t i, len;
-    int allowNA;
-    size_t ntype;
-    int nc;
-    const char *type;
-    const char *xi;
-    wchar_t *wc;
-    const void *vmax;
+    int nargs = length(args);
 
+#ifdef R_version_3_4_or_so
     checkArity(op, args);
+#else
+    // will work also for code byte-compiled *before* 'keepNA' was introduced
+    if (nargs < 3 || nargs > 4)
+	errorcall(call,
+		  ngettext("%d argument passed to '%s' which requires %d to %d",
+			   "%d arguments passed to '%s' which requires %d to %d",
+			   (unsigned long) nargs),
+		  nargs, PRIMNAME(op), 3, 4);
+#endif
     if (isFactor(CAR(args)))
 	error(_("'%s' requires a character vector"), "nchar()");
     PROTECT(x = coerceVector(CAR(args), STRSXP));
     if (!isString(x))
 	error(_("'%s' requires a character vector"), "nchar()");
-    len = XLENGTH(x);
+    R_xlen_t len = XLENGTH(x);
     stype = CADR(args);
     if (!isString(stype) || LENGTH(stype) != 1)
 	error(_("invalid '%s' argument"), "type");
-    type = CHAR(STRING_ELT(stype, 0)); /* always ASCII */
-    ntype = strlen(type);
+    const char *type = CHAR(STRING_ELT(stype, 0)); /* always ASCII */
+    size_t ntype = strlen(type);
     if (ntype == 0) error(_("invalid '%s' argument"), "type");
-    allowNA = asLogical(CADDR(args));
+    nchar_type type_;
+    if (strncmp(type, "bytes", ntype) == 0)	 type_ = Bytes;
+    else if (strncmp(type, "chars", ntype) == 0) type_ = Chars;
+    else if (strncmp(type, "width", ntype) == 0) type_ = Width;
+    else error(_("invalid '%s' argument"), "type");
+    int allowNA = asLogical(CADDR(args));
     if (allowNA == NA_LOGICAL) allowNA = 0;
-
+    int keepNA;
+    if(nargs >= 4) {
+	keepNA = asLogical(CADDDR(args));
+	if (keepNA == NA_LOGICAL) // default
+	    keepNA = (type_ == Width) ? FALSE : TRUE;
+    } else  keepNA = (type_ == Width) ? FALSE : TRUE;
     PROTECT(s = allocVector(INTSXP, len));
-    vmax = vmaxget();
-    for (i = 0; i < len; i++) {
+    int *s_ = INTEGER(s);
+    for (R_xlen_t i = 0; i < len; i++) {
 	SEXP sxi = STRING_ELT(x, i);
-	if (sxi == NA_STRING) {
-	    INTEGER(s)[i] = 2;
-	    continue;
-	}
-	if (strncmp(type, "bytes", ntype) == 0) {
-	    INTEGER(s)[i] = LENGTH(sxi);
-	} else if (strncmp(type, "chars", ntype) == 0) {
-	    if (IS_UTF8(sxi)) { /* assume this is valid */
-		const char *p = CHAR(sxi);
-		nc = 0;
-		for( ; *p; p += utf8clen(*p)) nc++;
-		INTEGER(s)[i] = nc;
-	    } else if (IS_BYTES(sxi)) {
-		if (!allowNA) /* could do chars 0 */
-		    error(_("number of characters is not computable for element %d in \"bytes\" encoding"), i+1);
-		INTEGER(s)[i] = NA_INTEGER;
-	    } else if (mbcslocale) {
-		nc = (int) mbstowcs(NULL, translateChar(sxi), 0);
-		if (!allowNA && nc < 0)
-		    error(_("invalid multibyte string %d"), i+1);
-		INTEGER(s)[i] = nc >= 0 ? nc : NA_INTEGER;
-	    } else
-		INTEGER(s)[i] = (int) strlen(translateChar(sxi));
-	} else if (strncmp(type, "width", ntype) == 0) {
-	    if (IS_UTF8(sxi)) { /* assume this is valid */
-		const char *p = CHAR(sxi);
-		wchar_t wc1;
-		nc = 0;
-		for( ; *p; p += utf8clen(*p)) {
-		    utf8toucs(&wc1, p);
-		    nc += Ri18n_wcwidth(wc1);
-		}
-		INTEGER(s)[i] = nc;
-	    } else if (IS_BYTES(sxi)) {
-		if (!allowNA) /* could do width 0 */
-		    error(_("width is not computable for element %d in \"bytes\" encoding"), i+1);
-		INTEGER(s)[i] = NA_INTEGER;
-	    } else if (mbcslocale) {
-		xi = translateChar(sxi);
-		nc = (int) mbstowcs(NULL, xi, 0);
-		if (nc >= 0) {
-		    wc = (wchar_t *) R_AllocStringBuffer((nc+1)*sizeof(wchar_t), &cbuff);
-
-		    mbstowcs(wc, xi, nc + 1);
-		    INTEGER(s)[i] = Ri18n_wcswidth(wc, 2147483647);
-		    if (INTEGER(s)[i] < 1) INTEGER(s)[i] = nc;
-		} else if (allowNA)
-		    error(_("invalid multibyte string %d"), i+1);
-		else
-		    INTEGER(s)[i] = NA_INTEGER;
-	    } else
-		INTEGER(s)[i] = (int) strlen(translateChar(sxi));
-	} else
-	    error(_("invalid '%s' argument"), "type");
-	vmaxset(vmax);
+	char msg_i[20]; sprintf(msg_i, "element %ld", (long)i+1);
+	s_[i] = R_nchar(sxi, type_, allowNA, keepNA, msg_i);
     }
     R_FreeStringBufferL(&cbuff);
     if ((d = getAttrib(x, R_NamesSymbol)) != R_NilValue)
@@ -292,7 +348,7 @@ SEXP attribute_hidden do_substr(SEXP call, SEXP op, SEXP args, SEXP env)
 	}
 	R_FreeStringBufferL(&cbuff);
     }
-    DUPLICATE_ATTRIB(s, x);
+    SHALLOW_DUPLICATE_ATTRIB(s, x);
     /* This copied the class, if any */
     UNPROTECT(1);
     return s;
@@ -366,7 +422,7 @@ SEXP attribute_hidden do_substrgets(SEXP call, SEXP op, SEXP args, SEXP env)
 
 	v = LENGTH(value);
 	if (!isString(value) || v == 0) error(_("invalid value"));
-	
+
 	vmax = vmaxget();
 	for (i = 0; i < len; i++) {
 	    el = STRING_ELT(x, i);
@@ -570,7 +626,7 @@ SEXP attribute_hidden do_abbrev(SEXP call, SEXP op, SEXP args, SEXP env)
 	vmaxset(vmax);
     }
     if (warn) warning(_("abbreviate used with non-ASCII chars"));
-    DUPLICATE_ATTRIB(ans, x);
+    SHALLOW_DUPLICATE_ATTRIB(ans, x);
     /* This copied the class, if any */
     R_FreeStringBufferL(&cbuff);
     UNPROTECT(1);
@@ -772,7 +828,7 @@ SEXP attribute_hidden do_tolower(SEXP call, SEXP op, SEXP args, SEXP env)
 	    vmaxset(vmax);
 	}
     }
-    DUPLICATE_ATTRIB(y, x);
+    SHALLOW_DUPLICATE_ATTRIB(y, x);
     /* This copied the class, if any */
     UNPROTECT(1);
     return(y);
@@ -1035,13 +1091,13 @@ SEXP attribute_hidden do_chartr(SEXP call, SEXP op, SEXP args, SEXP env)
     _new = CAR(args); args = CDR(args);
     x = CAR(args);
     n = XLENGTH(x);
-    if (!isString(old) || length(old) < 1 || STRING_ELT(old, 0) == NA_STRING)
+    if (!isString(old) || LENGTH(old) < 1 || STRING_ELT(old, 0) == NA_STRING)
 	error(_("invalid '%s' argument"), "old");
-    if (length(old) > 1)
+    if (LENGTH(old) > 1)
 	warning(_("argument '%s' has length > 1 and only the first element will be used"), "old");
-    if (!isString(_new) || length(_new) < 1 || STRING_ELT(_new, 0) == NA_STRING)
+    if (!isString(_new) || LENGTH(_new) < 1 || STRING_ELT(_new, 0) == NA_STRING)
 	error(_("invalid '%s' argument"), "new");
-    if (length(_new) > 1)
+    if (LENGTH(_new) > 1)
 	warning(_("argument '%s' has length > 1 and only the first element will be used"), "new");
     if (!isString(x)) error("invalid '%s' argument", "x");
 
@@ -1115,7 +1171,7 @@ SEXP attribute_hidden do_chartr(SEXP call, SEXP op, SEXP args, SEXP env)
 
 	trs_cnt_ptr = Calloc(1, struct wtr_spec *);
 	*trs_cnt_ptr = trs_cnt->next;
-	for (xtable_cnt = 0 ; wtr_get_next_char_from_spec(trs_cnt_ptr); 
+	for (xtable_cnt = 0 ; wtr_get_next_char_from_spec(trs_cnt_ptr);
 	      xtable_cnt++) ;
 	wtr_free_spec(trs_cnt);
 	Free(trs_cnt_ptr);
@@ -1194,7 +1250,7 @@ SEXP attribute_hidden do_chartr(SEXP call, SEXP op, SEXP args, SEXP env)
 	struct tr_spec *trs_old, **trs_old_ptr;
 	struct tr_spec *trs_new, **trs_new_ptr;
 
-	for (unsigned int ii = 0; ii <= UCHAR_MAX; ii++) 
+	for (unsigned int ii = 0; ii <= UCHAR_MAX; ii++)
 	    xtable[ii] = (unsigned char) ii;
 
 	/* Initialize the old and new tr_spec lists. */
@@ -1248,7 +1304,7 @@ SEXP attribute_hidden do_chartr(SEXP call, SEXP op, SEXP args, SEXP env)
 	vmaxset(vmax);
     }
 
-    DUPLICATE_ATTRIB(y, x);
+    SHALLOW_DUPLICATE_ATTRIB(y, x);
     /* This copied the class, if any */
     UNPROTECT(1);
     return(y);
@@ -1307,7 +1363,7 @@ SEXP attribute_hidden do_strtrim(SEXP call, SEXP op, SEXP args, SEXP env)
 	vmaxset(vmax);
     }
     if (len > 0) R_FreeStringBufferL(&cbuff);
-    DUPLICATE_ATTRIB(s, x);
+    SHALLOW_DUPLICATE_ATTRIB(s, x);
     /* This copied the class, if any */
     UNPROTECT(2);
     return s;
@@ -1338,8 +1394,8 @@ SEXP attribute_hidden do_strtoi(SEXP call, SEXP op, SEXP args, SEXP env)
 
     x = CAR(args); args = CDR(args);
     b = CAR(args);
-    
-    if(!isInteger(b) || (length(b) < 1))
+
+    if(!isInteger(b) || (LENGTH(b) < 1))
 	error(_("invalid '%s' argument"), "base");
     base = INTEGER(b)[0];
     if((base != 0) && ((base < 2) || (base > 36)))
@@ -1349,7 +1405,7 @@ SEXP attribute_hidden do_strtoi(SEXP call, SEXP op, SEXP args, SEXP env)
     for(i = 0; i < n; i++)
 	INTEGER(ans)[i] = strtoi(STRING_ELT(x, i), base);
     UNPROTECT(1);
-    
+
     return ans;
 }
 
@@ -1364,9 +1420,63 @@ SEXP attribute_hidden stringSuffix(SEXP string, int fromIndex) {
     SEXP res = PROTECT(allocVector(STRSXP, newLen));
     int i;
     for(i = 0; i < newLen; i++) {
-        SET_STRING_ELT(res, i, STRING_ELT(string, fromIndex++));
+	SET_STRING_ELT(res, i, STRING_ELT(string, fromIndex++));
     }
 
     UNPROTECT(1); /* res */
     return res;
+}
+
+SEXP attribute_hidden do_strrep(SEXP call, SEXP op, SEXP args, SEXP env)
+{
+    SEXP d, s, x, n;
+    R_xlen_t is, ix, in, ns, nx, nn;
+    const char *xi;
+    int j, ni, nc;
+    const char *cbuf;
+    char *buf;
+    const void *vmax;
+
+    checkArity(op, args);
+
+    x = CAR(args); args = CDR(args);
+    n = CAR(args);
+
+    nx = XLENGTH(x);
+    nn = XLENGTH(n);
+    if((nx == 0) || (nn == 0))
+	return allocVector(STRSXP, 0);
+
+    ns = (nx > nn) ? nx : nn;
+
+    PROTECT(s = allocVector(STRSXP, ns));
+    vmax = vmaxget();
+    is = ix = in = 0;
+    for(; is < ns; is++) {
+	ni = INTEGER(n)[in];
+	if((STRING_ELT(x, ix) == NA_STRING) || (ni == NA_INTEGER)) {
+	    SET_STRING_ELT(s, is, NA_STRING);
+	    continue;
+	}
+	if(ni < 0)
+	    error(_("invalid '%s' value"), "times");
+	xi = CHAR(STRING_ELT(x, ix));
+	nc = (int) strlen(xi);
+	cbuf = buf = CallocCharBuf(nc * ni);
+	for(j = 0; j < ni; j++) {
+	    strcpy(buf, xi);
+	    buf += nc;
+	}
+	SET_STRING_ELT(s, is, markKnown(cbuf, STRING_ELT(x, ix)));
+	Free(cbuf);
+	vmaxset(vmax);
+	ix = (++ix == nx) ? 0 : ix;
+	in = (++in == nn) ? 0 : in;
+    }
+    /* Copy names if not recycled. */
+    if((ns == nx) &&
+       (d = getAttrib(x, R_NamesSymbol)) != R_NilValue)
+	setAttrib(s, R_NamesSymbol, d);
+    UNPROTECT(1);
+    return s;
 }

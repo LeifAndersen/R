@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
  *  Copyright (C) 1997        Robert Gentleman and Ross Ihaka
- *  Copyright (C) 1999-2002   The R Core Team.
+ *  Copyright (C) 1999-2015   The R Core Team.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -15,7 +15,7 @@
  *
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 /* 
@@ -35,7 +35,7 @@
 extern "C" {
 #endif
 
-	/* Double Precision Linpack */
+	/* Double Precision LINPACK */
 
 extern void F77_NAME(dpbfa)(double*, int*, int*, int*, int*);
 extern void F77_NAME(dpbsl)(double*, int*, int*, int*, double*);

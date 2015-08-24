@@ -1115,8 +1115,8 @@ functions are defined and also in file @file{size.c} which needs access
 to the sizes of the internal structures.)
 
 For background papers see
-@uref{http://www.stat.uiowa.edu/~luke/R/barrier.html} and
-@uref{http://www.stat.uiowa.edu/~luke/R/gengcnotes.html}.
+@uref{http://homepage.stat.uiowa.edu/~luke/R/barrier.html} and
+@uref{http://homepage.stat.uiowa.edu/~luke/R/gengcnotes.html}.
 
 @node Serialization Formats, Encodings for CHARSXPs, The write barrier, R Internal Structures
 @section Serialization Formats
@@ -1480,7 +1480,7 @@ only the visible methods will be cached.
 @subsection Mechanics of S4 dispatch
 
 This subsection does not discuss how S4 methods are chosen: see
-@uref{http://@/developer.@/r-project.org/howMethodsWork.pdf}.
+@uref{https://@/developer.@/r-project.org/howMethodsWork.pdf}.
 
 For all but primitive functions, setting a method on an existing
 function that is not itself S4 generic creates a new object in the
@@ -2443,7 +2443,7 @@ top-level @file{po} directory.
 @section OS X GUI
 
 This is handled separately: see
-@uref{http://developer.r-project.org/Translations.html}.
+@uref{https://developer.r-project.org/Translations30.html}.
 
 
 @node Updating,  , OS X GUI, Internationalization in the R sources
@@ -2700,8 +2700,8 @@ that in S and whose @R{} code@footnote{The C code is in files
 @pkg{graphics}) and one implemented in package @pkg{grid}.
 
 Some notes on the historical changes can be found at
-@uref{http://www.stat.auckland.ac.nz/@/~paul/@/R/basegraph.html} and
-@uref{http://www.stat.auckland.ac.nz/@/~paul/R/@/graphicsChanges.html}.
+@uref{https://www.stat.auckland.ac.nz/@/~paul/@/R/basegraph.html} and
+@uref{https://www.stat.auckland.ac.nz/@/~paul/R/@/graphicsChanges.html}.
 
 At the lowest level is a graphics device, which manages a plotting
 surface (a screen window or a representation to be written to a file).
@@ -3252,7 +3252,7 @@ returned.  C functions @code{doMouseEvent} and @code{doKeybd} are
 provided to call the R event handlers @code{onMouseDown},
 @code{onMouseMove}, @code{onMouseUp}, and @code{onKeybd} and set
 @code{eventEnv$result} during this step.  Finally, @code{initEvent} is
-called again with @code{init=false} to inform the the devices that the
+called again with @code{init=false} to inform the devices that the
 loop is done, and the result is returned to the user.
 
 @node Specific devices,  , Graphics events, Graphics devices
@@ -3803,7 +3803,7 @@ Default: @samp{default} (which checks only tarballs, and checks in the
 If true, make use of the @CRANpkg{codetools} package, which provides a
 detailed analysis of visibility of objects (but may give false
 positives).
-Default: true.
+Default: true (if recommended packages are installed).
 @item _R_CHECK_USE_INSTALL_LOG_
 If true, record the output from installing a package as part of its
 check to a log file (@file{00install.out} by default), even when running
@@ -3811,8 +3811,8 @@ interactively.
 Default: true.
 @item _R_CHECK_VIGNETTES_NLINES_
 Maximum number of lines to show at the bottom of the output when reporting
-errors in running vignettes.
-Default: 10.
+errors in running or re-building vignettes.
+Default: 10 for running, 25 for re-building.
 @item _R_CHECK_CODOC_S4_METHODS_
 Control whether @code{codoc()} testing is also performed on S4 methods.
 Default: true.
@@ -4069,6 +4069,11 @@ If set, check code usage (via @CRANpkg{codetools}) directly on the
 package namespace without loading and attaching the package and its
 suggests and enhances.
 Default: true (and true for CRAN submission checks).
+
+@item _R_CHECK_CODE_USAGE_WITH_ONLY_BASE_ATTACHED_
+If set, check code usage (via @CRANpkg{codetools}) with only the base
+package attached.
+Default: false (but true for CRAN submission checks).
 
 @item _R_CHECK_EXIT_ON_FIRST_ERROR_
 If set to a true value, the check will exit on the first error.
@@ -4449,7 +4454,7 @@ introduce `long' versions @code{xlength} and @code{XLENGTH} which return
 @code{R_xlen_t} values.
 
 
-See also @uref{http://www.cs.uiowa.edu/~luke/talks/useR10.pdf}.
+See also @uref{http://homepage.cs.uiowa.edu/~luke/talks/useR10.pdf}.
 
 @node Large matrices,  , 64-bit types, Current and future directions
 @section Large matrices

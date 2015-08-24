@@ -14,7 +14,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 #ifdef HAVE_CONFIG_H
@@ -29,7 +29,7 @@
 #include <Fileio.h>
 #include <errno.h>
 
-#ifdef HAVE_CURL_CURL_H
+#ifdef HAVE_LIBCURL
 # include <curl/curl.h>
 /*
   This need libcurl >= 7.28.0 (Oct 2012) for curl_multi_wait.
@@ -45,12 +45,14 @@ SEXP attribute_hidden in_do_curlVersion(SEXP call, SEXP op, SEXP args, SEXP rho)
 {
     checkArity(op, args);
     SEXP ans = PROTECT(allocVector(STRSXP, 1));
-#ifdef HAVE_CURL_CURL_H
+#ifdef HAVE_LIBCURL
     curl_version_info_data *d = curl_version_info(CURLVERSION_NOW);
     SET_STRING_ELT(ans, 0, mkChar(d->version));
-    setAttrib(ans, install("ssl_version"),
+    SEXP sSSLVersion = install("ssl_version");
+    setAttrib(ans, sSSLVersion,
 	      mkString(d->ssl_version ? d->ssl_version : "none"));
-    setAttrib(ans, install("libssh_version"),
+    SEXP sLibSSHVersion = install("libssh_version");
+    setAttrib(ans, sLibSSHVersion,
 	      mkString(((d->age >= 3) && d->libssh_version) ? d->libssh_version : ""));
     const char * const *p;
     int n, i;
@@ -68,7 +70,7 @@ SEXP attribute_hidden in_do_curlVersion(SEXP call, SEXP op, SEXP args, SEXP rho)
 }
 
 
-#ifdef HAVE_CURL_CURL_H
+#ifdef HAVE_LIBCURL
 static void curlCommon(CURL *hnd, int redirect, int verify)
 {
     const char *capath = getenv("CURL_CA_BUNDLE");
@@ -84,8 +86,12 @@ static void curlCommon(CURL *hnd, int redirect, int verify)
 	curl_easy_setopt(hnd, CURLOPT_SSL_VERIFYPEER, 0L);
     }
     // for consistency, but all that does is look up an option.
-    SEXP agentFun = PROTECT(lang2(install("makeUserAgent"), ScalarLogical(0)));
-    SEXP sua = PROTECT(eval(agentFun, R_FindNamespace(mkString("utils"))));
+    SEXP sMakeUserAgent = install("makeUserAgent");
+    SEXP agentFun = PROTECT(lang2(sMakeUserAgent, ScalarLogical(0)));
+    SEXP utilsNS = PROTECT(R_FindNamespace(mkString("utils")));
+    SEXP sua = eval(agentFun, utilsNS);
+    UNPROTECT(1); /* utilsNS */
+    PROTECT(sua);
     if(TYPEOF(sua) != NILSXP)
 	curl_easy_setopt(hnd, CURLOPT_USERAGENT, CHAR(STRING_ELT(sua, 0)));
     UNPROTECT(2);
@@ -132,7 +138,7 @@ SEXP attribute_hidden
 in_do_curlGetHeaders(SEXP call, SEXP op, SEXP args, SEXP rho)
 {
     checkArity(op, args);
-#ifndef HAVE_CURL_CURL_H
+#ifndef HAVE_LIBCURL
     error(_("curlGetHeaders is not supported on this platform"));
     return R_NilValue;
 #else
@@ -170,14 +176,23 @@ in_do_curlGetHeaders(SEXP call, SEXP op, SEXP args, SEXP rho)
     SEXP ans = PROTECT(allocVector(STRSXP, used));
     for (int i = 0; i < used; i++)
 	SET_STRING_ELT(ans, i, mkChar(headers[i]));
-    setAttrib(ans, install("status"), ScalarInteger((int) http_code));
+    SEXP sStatus = install("status");
+    setAttrib(ans, sStatus, ScalarInteger((int) http_code));
     UNPROTECT(1);
     return ans;
 #endif
 }
 
-#ifdef HAVE_CURL_CURL_H
+#ifdef HAVE_LIBCURL
 static double total;
+
+static int ndashes;
+static void putdashes(int *pold, int new)
+{
+    for (int i = *pold; i < new; i++)  REprintf("=");
+    if (R_Consolefile) fflush(R_Consolefile);
+    *pold = new;
+}
 
 #ifdef Win32
 // ------- Windows progress bar -----------
@@ -210,9 +225,12 @@ int progress(void *clientp, double dltotal, double dlnow,
     if (dltotal > 0.) {
 	if (total == 0.) {
 	    total = dltotal;
+	    char *type = NULL;
+	    CURL *hnd = (CURL *) clientp;
+	    curl_easy_getinfo(hnd, CURLINFO_CONTENT_TYPE, &type);
 	    if (total > 1024.0*1024.0)
 		// might be longer than long, and is on 64-bit windows
-		REprintf("Content length %0.0f bytes (%0.1f MB)\n",
+		REprintf(" length %0.0f bytes (%0.1f MB)\n",
 			 total, total/1024.0/1024.0);
 	    else if (total > 10240)
 		REprintf("Content length %d bytes (%d KB)\n",
@@ -220,20 +238,24 @@ int progress(void *clientp, double dltotal, double dlnow,
 	    else
 		REprintf("Content length %d bytes\n", (int)total);
 	    R_FlushConsole();
-	    if (total > 1e9) factor = total/1e6; else factor = 1;
-	    setprogressbarrange(pbar.pb, 0, total/factor);
-	    show(pbar.wprog);
-	}
-	setprogressbar(pbar.pb, dlnow/factor);
-	if (total > 0) {
-	    static char pbuf[30];
-	    int pc = 0.499 + 100.0*dlnow/total;
-	    if (pc > pbar.pc) {
-		snprintf(pbuf, 30, "%d%% downloaded", pc);
-		settext(pbar.wprog, pbuf);
-		pbar.pc = pc;
+	    if(R_Interactive) {
+		if (total > 1e9) factor = total/1e6; else factor = 1;
+		setprogressbarrange(pbar.pb, 0, total/factor);
+		show(pbar.wprog);
 	    }
 	}
+	if (R_Interactive) {
+	    setprogressbar(pbar.pb, dlnow/factor);
+	    if (total > 0) {
+		static char pbuf[30];
+		int pc = 0.499 + 100.0*dlnow/total;
+		if (pc > pbar.pc) {
+		    snprintf(pbuf, 30, "%d%% downloaded", pc);
+		    settext(pbar.wprog, pbuf);
+		    pbar.pc = pc;
+		}
+	    }
+	} else putdashes(&ndashes, (int)(50*dlnow/total));
     }
     R_ProcessEvents();
     return 0;
@@ -241,14 +263,6 @@ int progress(void *clientp, double dltotal, double dlnow,
 
 #else
 // ------- Unix-alike progress bar -----------
-
-static int ndashes;
-static void putdashes(int *pold, int new)
-{
-    for (int i = *pold; i < new; i++)  REprintf("=");
-    if (R_Consolefile) fflush(R_Consolefile);
-    *pold = new;
-}
 
 static
 int progress(void *clientp, double dltotal, double dlnow,
@@ -288,7 +302,7 @@ SEXP attribute_hidden
 in_do_curlDownload(SEXP call, SEXP op, SEXP args, SEXP rho)
 {
     checkArity(op, args);
-#ifndef HAVE_CURL_CURL_H
+#ifndef HAVE_LIBCURL
     error(_("download.file(method = \"libcurl\") is not supported on this platform"));
     return R_NilValue;
 #else
@@ -346,28 +360,30 @@ in_do_curlDownload(SEXP call, SEXP op, SEXP args, SEXP rho)
 	    // It would in principle be possible to have
 	    // multiple progress bars on Windows.
 	    curl_easy_setopt(hnd[i], CURLOPT_NOPROGRESS, 0L);
-#ifdef Win32
-	    if (!pbar.wprog) {
-		pbar.wprog = newwindow(_("Download progress"),
-				       rect(0, 0, 540, 100),
-				       Titlebar | Centered);
-		setbackground(pbar.wprog, dialog_bg());
-		pbar.l_url = newlabel(" ", rect(10, 15, 520, 25), AlignCenter);
-		pbar.pb = newprogressbar(rect(20, 50, 500, 20),
-					 0, 1024, 1024, 1);
-		pbar.pc = 0;
-	    }
-	    
-	    settext(pbar.l_url, url);
-	    setprogressbar(pbar.pb, 0);
-	    settext(pbar.wprog, "Download progress");
-	    show(pbar.wprog);
-	    begincontext(&(pbar.cntxt), CTXT_CCODE, R_NilValue, R_NilValue,
-			 R_NilValue, R_NilValue, R_NilValue);
-	    pbar.cntxt.cend = &doneprogressbar;
-	    pbar.cntxt.cenddata = &pbar;
-#else
 	    ndashes = 0;
+#ifdef Win32
+	    if (R_Interactive) {
+		if (!pbar.wprog) {
+		    pbar.wprog = newwindow(_("Download progress"),
+					   rect(0, 0, 540, 100),
+					   Titlebar | Centered);
+		    setbackground(pbar.wprog, dialog_bg());
+		    pbar.l_url = newlabel(" ", rect(10, 15, 520, 25), 
+					  AlignCenter);
+		    pbar.pb = newprogressbar(rect(20, 50, 500, 20),
+					     0, 1024, 1024, 1);
+		    pbar.pc = 0;
+		}
+	    
+		settext(pbar.l_url, url);
+		setprogressbar(pbar.pb, 0);
+		settext(pbar.wprog, "Download progress");
+		show(pbar.wprog);
+		begincontext(&(pbar.cntxt), CTXT_CCODE, R_NilValue, R_NilValue,
+			     R_NilValue, R_NilValue, R_NilValue);
+		pbar.cntxt.cend = &doneprogressbar;
+		pbar.cntxt.cenddata = &pbar;
+	    }
 #endif
 	    // For libcurl >= 7.32.0 use CURLOPT_XFERINFOFUNCTION
 	    curl_easy_setopt(hnd[i], CURLOPT_PROGRESSFUNCTION, progress);
@@ -417,9 +433,12 @@ in_do_curlDownload(SEXP call, SEXP op, SEXP args, SEXP rho)
     } while(still_running);
     R_Busy(0);
 #ifdef Win32
-    if (!quiet) {
+    if (R_Interactive && !quiet) {
 	endcontext(&(pbar.cntxt));
 	doneprogressbar(&pbar);
+    } else if (total > 0.) {
+	REprintf("\n");
+	R_FlushConsole();
     }
 #else
     if (total > 0.) REprintf("\n");
@@ -485,7 +504,7 @@ in_do_curlDownload(SEXP call, SEXP op, SEXP args, SEXP rho)
 
 #define R_MIN(a, b) ((a) < (b) ? (a) : (b))
 
-#ifdef HAVE_CURL_CURL_H
+#ifdef HAVE_LIBCURL
 typedef struct Curlconn {
     char *buf, *current; // base of buffer, last read address
     size_t bufsize, filled;  // buffer size, amount which has been filled
@@ -631,7 +650,7 @@ static int Curl_fgetc_internal(Rconnection con)
 Rconnection 
 in_newCurlUrl(const char *description, const char * const mode, int type)
 {
-#ifdef HAVE_CURL_CURL_H
+#ifdef HAVE_LIBCURL
     Rconnection new = (Rconnection) malloc(sizeof(struct Rconn));
     if (!new) error(_("allocation of url connection failed"));
     new->class = (char *) malloc(strlen("url-libcurl") + 1);

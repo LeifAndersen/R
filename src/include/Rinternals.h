@@ -15,7 +15,7 @@
  *
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 /* This file is installed and available to packages, but only a small
@@ -130,7 +130,7 @@ typedef unsigned int SEXPTYPE;
 #define S4SXP       25    /* S4, non-vector */
 
 /* used for detecting PROTECT issues in memory.c */
-#define NEWSXP      30    /* fresh node creaed in new page */
+#define NEWSXP      30    /* fresh node created in new page */
 #define FREESXP     31    /* node released by GC */
 
 #define FUNSXP      99    /* Closure or Builtin or Special */
@@ -527,6 +527,7 @@ void (SET_TYPEOF)(SEXP x, int v);
 void (SET_NAMED)(SEXP x, int v);
 void SET_ATTRIB(SEXP x, SEXP v);
 void DUPLICATE_ATTRIB(SEXP to, SEXP from);
+void SHALLOW_DUPLICATE_ATTRIB(SEXP to, SEXP from);
 
 /* S4 object testing */
 int (IS_S4_OBJECT)(SEXP x);
@@ -829,6 +830,10 @@ SEXP Rf_nthcdr(SEXP, int);
 SEXP R_CollectTopMark(SEXP);
 SEXP R_CollectMarks(SEXP);
 SEXP R_AddMark(SEXP,SEXP,int);
+// ../main/character.c :
+typedef enum {Bytes, Chars, Width} nchar_type;
+int R_nchar(SEXP string, nchar_type type_,
+	    Rboolean allowNA, Rboolean keepNA, const char* msg_name);
 
 Rboolean Rf_pmatch(SEXP, SEXP, Rboolean);
 Rboolean Rf_psmatch(const char *, const char *, Rboolean);
@@ -897,6 +902,9 @@ const char *Rf_reEnc(const char *x, cetype_t ce_in, cetype_t ce_out, int subst);
 #undef extern
 #undef LibExtern
 #endif
+
+/* Calling a function with arguments evaluated */
+SEXP R_forceAndCall(SEXP e, int n, SEXP rho);
 
 /* External pointer interface */
 SEXP R_MakeExternalPtr(void *p, SEXP tag, SEXP prot);

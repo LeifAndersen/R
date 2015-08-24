@@ -1,5 +1,5 @@
 % File src/library/base/man/regmatches.Rd
-% Part of the R package, http://www.R-project.org
+% Part of the R package, https://www.R-project.org
 % Copyright 1995-2014 R Core Team
 % Distributed under GPL 2 or later
 
@@ -79,10 +79,7 @@ x <- "John (fishing, hunting), Paul (hiking, biking)"
 m <- gregexpr("\\\\([^)]*\\\\)", x)
 ## Write a little utility for creating blank strings with given numbers
 ## of characters.
-blanks <- function(n) {
-     vapply(Map(rep.int, rep.int(" ", length(n)), n, USE.NAMES = FALSE),
-           paste, "", collapse = "")
-}
+blanks <- function(n) strrep(" ", n)
 ## Create a copy of x with the parenthesized parts blanked out.
 s <- x
 regmatches(s, m) <- Map(blanks, lapply(regmatches(s, m), nchar))

@@ -1,7 +1,7 @@
 #  File src/library/splines/R/splineClasses.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #  Copyright (C) 1998 Douglas M. Bates and William N. Venables.
-#  Copyright (C) 2000-2014 The R Core Team
+#  Copyright (C) 2000-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 #### Classes and methods for determining and manipulating interpolation
 #### splines.
@@ -93,19 +93,18 @@ splineDesign <-
 	if(need.outer) { ## shift column numbers and drop those "outside"
 	    jj <- jj - o1 - 1L
 	    ok <- 0 <= jj & jj < ncoef
-	    as(new("dgTMatrix",
-		   i = ii[ok] - 1L,
-		   j = jj[ok],
-		   x = as.double(temp[ok]),
-		   Dim = c(nx, ncoef)), "CsparseMatrix")
+	    methods::as(methods::new("dgTMatrix",
+                                     i = ii[ok] - 1L,
+                                     j = jj[ok],
+                                     x = as.double(temp[ok]),
+                                     Dim = c(nx, ncoef)), "CsparseMatrix")
 	}
 	else
-	    as(new("dgTMatrix",
-		   i = ii - 1L,
-		   j = jj - 1L,
-		   x = as.double(temp),
-		   Dim = c(nx, ncoef)), "CsparseMatrix")
-
+	    methods::as(methods::new("dgTMatrix",
+                                     i = ii - 1L,
+                                     j = jj - 1L,
+                                     x = as.double(temp),
+                                     Dim = c(nx, ncoef)), "CsparseMatrix")
     } else { ## traditional (dense) matrix
 	design <- matrix(double(nx * ncoef), nx, ncoef)
 	if(need.outer) { ## shift column numbers and drop those "outside"
@@ -142,7 +141,7 @@ interpSpline.default <-
     derivs <- c(2, integer(ndat), 2) # 2nd derivs coerced to 0 in solve() below
     x	   <- c(x[1L], x, x[ndat])
 ## Solving the system of equations for the spline coefficients can be
-## simplified by using banded matrices but the required Linpack routines
+## simplified by using banded matrices but the required LINPACK routines
 ## are not loaded as part of S.
 ##  z <- .C("spline_basis",
 ##	as.double(knots),

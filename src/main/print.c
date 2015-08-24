@@ -15,7 +15,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  *
  *
  *  print.default()  ->	 do_printdefault (with call tree below)
@@ -79,7 +79,7 @@ static void PrintLanguageEtc(SEXP, Rboolean, Rboolean);
 
 #define TAGBUFLEN 256
 #define TAGBUFLEN0 TAGBUFLEN + 6
-static char tagbuf[TAGBUFLEN0];
+static char tagbuf[TAGBUFLEN0 * 2]; /* over-allocate to allow overflow check */
 
 
 /* Used in X11 module for dataentry */
@@ -428,13 +428,14 @@ static void PrintGenericVector(SEXP s, SEXP env)
 			rn, cn);
 	}
 	else {
-	    names = GetArrayDimnames(s);
+	    PROTECT(names = GetArrayDimnames(s));
 	    printArray(t, dims, 0, Rprt_adj_left, names);
+	    UNPROTECT(1);
 	}
 	UNPROTECT(2);
     }
     else { // no dim()
-	names = getAttrib(s, R_NamesSymbol);
+	PROTECT(names = getAttrib(s, R_NamesSymbol));
 	taglen = (int) strlen(tagbuf);
 	ptag = tagbuf + taglen;
 	PROTECT(newcall = allocList(2));
@@ -510,7 +511,7 @@ static void PrintGenericVector(SEXP s, SEXP env)
 	    }
 	    if(className) {
 		Rprintf("An object of class \"%s\"\n", className);
-		UNPROTECT(1);
+		UNPROTECT(2); /* newcall, names */
 		printAttributes(s, env, TRUE);
 		vmaxset(vmax);
 		return;
@@ -521,7 +522,7 @@ static void PrintGenericVector(SEXP s, SEXP env)
 	    }
 	    vmaxset(vmax);
 	}
-	UNPROTECT(1);
+	UNPROTECT(2); /* newcall, names */
     }
     printAttributes(s, env, FALSE);
 } // PrintGenericVector
@@ -592,8 +593,9 @@ static void printList(SEXP s, SEXP env)
 			rn, cn);
 	}
 	else {
-	    dimnames = getAttrib(s, R_DimNamesSymbol);
+	    PROTECT(dimnames = getAttrib(s, R_DimNamesSymbol));
 	    printArray(t, dims, 0, Rprt_adj_left, dimnames);
+	    UNPROTECT(1);
 	}
 	UNPROTECT(2);
     }
@@ -653,10 +655,11 @@ static void PrintExpression(SEXP s)
     SEXP u;
     int i, n;
 
-    u = deparse1w(s, 0, R_print.useSource | DEFAULTDEPARSE);
+    u = PROTECT(deparse1w(s, 0, R_print.useSource | DEFAULTDEPARSE));
     n = LENGTH(u);
     for (i = 0; i < n; i++)
 	Rprintf("%s\n", CHAR(STRING_ELT(u, i))); /*translated */
+    UNPROTECT(1); /* u */
 }
 
 static void PrintSpecial(SEXP s)
@@ -799,8 +802,9 @@ void attribute_hidden PrintValueRec(SEXP s, SEXP env)
 	    }
 	    else {
 		SEXP dimnames;
-		dimnames = GetArrayDimnames(s);
+		PROTECT(dimnames = GetArrayDimnames(s));
 		printArray(s, t, R_print.quote, R_print.right, dimnames);
+		UNPROTECT(1);
 	    }
 	}
 	else {
@@ -849,6 +853,9 @@ static void printAttributes(SEXP s, SEXP env, Rboolean useSlots)
 
     a = ATTRIB(s);
     if (a != R_NilValue) {
+	/* guard against cycles through attributes on environments */
+	if (strlen(tagbuf) > TAGBUFLEN0)
+	    error(_("print buffer overflow"));
 	strcpy(save, tagbuf);
 	/* remove the tag if it looks like a list not an attribute */
 	if (strlen(tagbuf) > 0 &&
@@ -901,7 +908,7 @@ static void printAttributes(SEXP s, SEXP env, Rboolean useSlots)
 		    SEXP methodsNS = R_FindNamespace(mkString("methods"));
 		    if(methodsNS == R_UnboundValue)
 			error("missing methods namespace: this should not happen");
-		    PROTECT(showS);
+		    PROTECT(methodsNS);
 		    showS = findVarInFrame3(methodsNS, install("show"), TRUE);
 		    UNPROTECT(1);
 		    if(showS == R_UnboundValue)
@@ -970,39 +977,37 @@ void attribute_hidden PrintValueEnv(SEXP s, SEXP env)
 	  print(), so S4 methods for show() have precedence over those for
 	  print() to conform with the "green book", p. 332
 	*/
-	SEXP call, showS;
+	SEXP call, prinfun;
+	SEXP xsym = install("x");
 	if(isMethodsDispatchOn() && IS_S4_OBJECT(s)) {
 	    /*
-	      Note that we cannot assume that show() is visible from
-	      'env', but we can assume there is a loaded "methods"
+	      Note that can assume there is a loaded "methods"
 	      namespace.  It is tempting to cache the value of show in
 	      the namespace, but the latter could be unloaded and
 	      reloaded in a session.
 	    */
-	    showS = findVar(install("show"), env);
-	    if(showS == R_UnboundValue) {
-		SEXP methodsNS = R_FindNamespace(mkString("methods"));
-		if(methodsNS == R_UnboundValue)
-		    error("missing methods namespace: this should not happen");
-		PROTECT(methodsNS);
-		showS = findVarInFrame3(methodsNS, install("show"), TRUE);
-		UNPROTECT(1);
-		if(showS == R_UnboundValue)
-		    error("missing show() in methods namespace: this should not happen");
-	    }
-	    PROTECT(call = lang2(showS, s));
+	    SEXP methodsNS = R_FindNamespace(mkString("methods"));
+	    if(methodsNS == R_UnboundValue)
+		error("missing methods namespace: this should not happen");
+	    PROTECT(methodsNS);
+	    prinfun = findVarInFrame3(methodsNS, install("show"), TRUE);
+	    UNPROTECT(1);
+	    if(prinfun == R_UnboundValue)
+		error("missing show() in methods namespace: this should not happen");
 	}
 	else /* S3 */
-	    PROTECT(call = lang2(install("print"), s));
+	    prinfun = findVar(install("print"), R_BaseNamespace);
 
-	if (TYPEOF(s) == SYMSXP || TYPEOF(s) == LANGSXP)
-	    /* If s is not self-evaluating wrap it in a promise. Doing
-	       this unconditionally seems to create problems in the S4
-	       case. */
-	    SETCADR(call, R_mkEVPROMISE(s, s));
-
+	/* Bind value to a variable in a local environment, similar to
+	   a local({ x <- <value>; print(x) }) call. This avoids
+	   problems in previous approaches with value duplication and
+	   evaluating the value, which might be a call object. */
+	PROTECT(call = lang2(prinfun, xsym));
+	PROTECT(env = NewEnvironment(R_NilValue, R_NilValue, env));
+	defineVar(xsym, s, env);
 	eval(call, env);
-	UNPROTECT(1);
+	defineVar(xsym, R_NilValue, env); /* to eliminate reference to s */
+	UNPROTECT(2);
     } else PrintValueRec(s, env);
     UNPROTECT(1);
 }

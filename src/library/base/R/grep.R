@@ -1,5 +1,5 @@
 #  File src/library/base/R/grep.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
 #  Copyright (C) 1995-2015 The R Core Team
 #
@@ -14,7 +14,12 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
+
+
+## Q: Why are we using   as.character(.)   all over the place instead of doing that in C ?
+## A: These must work for objects which have their own as.character(.) methods *and*
+##    as.character() is fast [Primitive]
 
 strsplit <-
 function(x, split, fixed = FALSE, perl = FALSE, useBytes = FALSE)
@@ -85,9 +90,44 @@ function(pattern, x, offset = 1L, ignore.case = FALSE, value = FALSE,
 }
 
 regexec <-
-function(pattern, text, ignore.case = FALSE,
+function(pattern, text, ignore.case = FALSE, perl = FALSE,
          fixed = FALSE, useBytes = FALSE)
-    .Internal(regexec(pattern, text, ignore.case, fixed, useBytes))
+{
+    if(!perl || fixed)
+        return(.Internal(regexec(pattern, text, ignore.case, fixed,
+                                 useBytes)))
+
+    ## For perl = TRUE, re-use regexpr(perl = TRUE) which always
+    ## captures subexpressions.
+
+    match_data_from_pos_and_len <- function(pos, len) {
+        attr(pos, "match.length") <- len
+        pos
+    }
+
+    m <- regexpr(pattern, text,
+                 ignore.case = ignore.case, useBytes = useBytes,
+                 perl = TRUE)
+    y <- vector("list", length(text))
+    ind <- (m == -1L)
+    if(any(ind)) {
+        y[ind] <- rep.int(list(match_data_from_pos_and_len(-1L, -1L)),
+                          sum(ind))
+    }
+    ind <- !ind
+    if(any(ind)) {
+        pos <- cbind(m[ind],
+                     attr(m, "capture.start")[ind, , drop = FALSE])
+        len <- cbind(attr(m, "match.length")[ind],
+                     attr(m, "capture.length")[ind, , drop = FALSE])
+        y[ind] <- Map(match_data_from_pos_and_len,
+                      split(pos, row(pos)),
+                      split(len, row(len)))
+    }
+    if(identical(attr(m, "useBytes"), TRUE))
+        y <- lapply(y, `attr<-`, "useBytes", TRUE)
+    y
+}
 
 agrep <-
 function(pattern, x, max.distance = 0.1, costs = NULL,
@@ -342,7 +382,7 @@ function(x, m, invert = FALSE, value)
         if(anyNA(value))
             stop("missing replacement values are not allowed")
         ## Entries for matched elements have length 2.
-        pos <- which(sapply(y, length) == 2L)
+        pos <- which(lengths(y) == 2L)
         np <- length(pos)
         nv <- length(value)
         if(np != nv) {

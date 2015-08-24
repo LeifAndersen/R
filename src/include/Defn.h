@@ -15,7 +15,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 #ifndef DEFN_H_
@@ -522,6 +522,7 @@ typedef struct RCNTXT {
     void *cenddata;		/* data for C "on.exit" thunk */
     void *vmax;		        /* top of R_alloc stack */
     int intsusp;                /* interrupts are suspended */
+    int gcenabled;		/* R_GCenabled value */
     SEXP handlerstack;          /* condition handler stack */
     SEXP restartstack;          /* stack of available restarts */
     struct RPRSTACK *prstack;   /* stack of pending promises */
@@ -639,6 +640,7 @@ LibExtern char *R_Home;		    /* Root of the R tree */
 /* Memory Management */
 extern0 R_size_t R_NSize  INI_as(R_NSIZE);/* Size of cons cell heap */
 extern0 R_size_t R_VSize  INI_as(R_VSIZE);/* Size of the vector heap */
+extern0 int	R_GCEnabled INI_as(1);
 extern0 SEXP	R_NHeap;	    /* Start of the cons cell heap */
 extern0 SEXP	R_FreeSEXP;	    /* Cons cell free list */
 extern0 R_size_t R_Collected;	    /* Number of free cons cells (after gc) */
@@ -770,6 +772,9 @@ extern SEXP R_cmpfun(SEXP);
 extern void R_init_jit_enabled(void);
 extern void R_initAsignSymbols(void);
 
+LibExtern SEXP R_CachedScalarReal INI_as(NULL);
+LibExtern SEXP R_CachedScalarInteger INI_as(NULL);
+
 LibExtern int R_num_math_threads INI_as(1);
 LibExtern int R_max_num_math_threads INI_as(1);
 
@@ -808,10 +813,6 @@ extern0 Rboolean known_to_be_utf8 INI_as(FALSE);
 LibExtern SEXP R_TrueValue INI_as(NULL);
 LibExtern SEXP R_FalseValue INI_as(NULL);
 LibExtern SEXP R_LogicalNAValue INI_as(NULL);
-
-#ifdef Win32
-LibExtern Rboolean UseInternet2;
-#endif
 
 #ifdef __MAIN__
 # undef extern
@@ -858,7 +859,6 @@ LibExtern Rboolean UseInternet2;
 # define EncodeString           Rf_EncodeString
 # define EnsureString 		Rf_EnsureString
 # define endcontext		Rf_endcontext
-# define envlength		Rf_envlength
 # define ErrorMessage		Rf_ErrorMessage
 # define evalList		Rf_evalList
 # define evalListKeepMissing	Rf_evalListKeepMissing
@@ -998,7 +998,8 @@ Rboolean R_HiddenFile(const char *);
 double	R_FileMtime(const char *);
 
 /* environment cell access */
-typedef struct R_varloc_st *R_varloc_t;
+typedef struct { SEXP cell; } R_varloc_t; /* use struct to prevent casting */
+#define R_VARLOC_IS_NULL(loc) ((loc).cell == NULL)
 R_varloc_t R_findVarLocInFrame(SEXP, SEXP);
 SEXP R_GetVarLocValue(R_varloc_t);
 SEXP R_GetVarLocSymbol(R_varloc_t);
@@ -1061,7 +1062,6 @@ int DispatchGroup(const char *, SEXP,SEXP,SEXP,SEXP,SEXP*);
 SEXP duplicated(SEXP, Rboolean);
 R_xlen_t any_duplicated(SEXP, Rboolean);
 R_xlen_t any_duplicated3(SEXP, SEXP, Rboolean);
-int envlength(SEXP);
 SEXP evalList(SEXP, SEXP, SEXP, int);
 SEXP evalListKeepMissing(SEXP, SEXP);
 int factorsConform(SEXP, SEXP);
@@ -1275,12 +1275,12 @@ void invalidate_cached_recodings(void);  /* from sysutils.c */
 void resetICUcollator(void); /* from util.c */
 void dt_invalidate_locale(); /* from Rstrptime.h */
 int R_OutputCon; /* from connections.c */
-int R_InitReadItemDepth, R_ReadItemDepth; /* from serialize.c */
+extern int R_InitReadItemDepth, R_ReadItemDepth; /* from serialize.c */
 void get_current_mem(size_t *,size_t *,size_t *); /* from memory.c */
 unsigned long get_duplicate_counter(void);  /* from duplicate.c */
 void reset_duplicate_counter(void);  /* from duplicate.c */
 void BindDomain(char *); /* from main.c */
-Rboolean LoadInitFile;  /* from startup.c */
+extern Rboolean LoadInitFile;  /* from startup.c */
 
 // Unix and Windows versions
 double R_getClockIncrement(void);
@@ -1349,14 +1349,25 @@ extern const char *locale2charset(const char *);
 } while(0)
 
 
+/* 
+   alloca is neither C99 nor POSIX.
+
+   It might be better to try alloca.h first, see
+   https://www.gnu.org/software/autoconf/manual/autoconf-2.60/html_node/Particular-Functions.html
+*/
 #ifdef __GNUC__
+// This covers GNU, Clang and Intel compilers
+// The undef is needed in case some other header, e.g. malloc.h, already did this
 # undef alloca
 # define alloca(x) __builtin_alloca((x))
 #else
 # ifdef HAVE_ALLOCA_H
+// Needed for native compilers on Solaris and AIX
 #  include <alloca.h>
 # endif
+// it might have been defined via some other standard header, e.g. stdlib.h
 # if !HAVE_DECL_ALLOCA
+#  include <stddef.h> // for size_t
 extern void *alloca(size_t);
 # endif
 #endif

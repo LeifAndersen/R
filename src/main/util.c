@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
  *  Copyright (C) 1995, 1996  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 1997--2014  The R Core Team
+ *  Copyright (C) 1997--2015  The R Core Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 #ifdef HAVE_CONFIG_H
@@ -138,8 +138,7 @@ const static char * const falsenames[] = {
 
 SEXP asChar(SEXP x)
 {
-    if (XLENGTH(x) >= 1) {
-	if (isVectorAtomic(x)) {
+	if (isVectorAtomic(x) && XLENGTH(x) >= 1) {
 	    int w, d, e, wi, di, ei;
 	    char buf[MAXELTSIZE];  /* Probably 100 would suffice */
 
@@ -148,9 +147,9 @@ SEXP asChar(SEXP x)
 		if (LOGICAL(x)[0] == NA_LOGICAL)
 		    return NA_STRING;
 		if (LOGICAL(x)[0])
-		    sprintf(buf, "T");
+		    sprintf(buf, "TRUE");
 		else
-		    sprintf(buf, "F");
+		    sprintf(buf, "FALSE");
 		return mkChar(buf);
 	    case INTSXP:
 		if (INTEGER(x)[0] == NA_INTEGER)
@@ -174,7 +173,6 @@ SEXP asChar(SEXP x)
 	    return x;
 	} else if(TYPEOF(x) == SYMSXP)
 	    return PRINTNAME(x);
-    }
     return NA_STRING;
 }
 
@@ -258,40 +256,40 @@ static int findTypeInTypeTable(SEXPTYPE t)
 }
 
 // called from main.c
-attribute_hidden 
+attribute_hidden
 void InitTypeTables(void) {
 
     /* Type2Table */
     for (int type = 0; type < MAX_NUM_SEXPTYPE; type++) {
-        int j = findTypeInTypeTable(type);
+	int j = findTypeInTypeTable(type);
 
-        if (j != -1) {
-            const char *cstr = TypeTable[j].str;
-            SEXP rchar = PROTECT(mkChar(cstr));
-            SEXP rstr = ScalarString(rchar);
-            MARK_NOT_MUTABLE(rstr);
-            R_PreserveObject(rstr);
-            UNPROTECT(1); /* rchar */
-            SEXP rsym = install(cstr);
+	if (j != -1) {
+	    const char *cstr = TypeTable[j].str;
+	    SEXP rchar = PROTECT(mkChar(cstr));
+	    SEXP rstr = ScalarString(rchar);
+	    MARK_NOT_MUTABLE(rstr);
+	    R_PreserveObject(rstr);
+	    UNPROTECT(1); /* rchar */
+	    SEXP rsym = install(cstr);
 
-            Type2Table[type].cstrName = cstr;
-            Type2Table[type].rcharName = rchar;
-            Type2Table[type].rstrName = rstr;
-            Type2Table[type].rsymName = rsym;
-        } else {
-            Type2Table[type].cstrName = NULL;
-            Type2Table[type].rcharName = NULL;
-            Type2Table[type].rstrName = NULL;
-            Type2Table[type].rsymName = NULL;
-        }
+	    Type2Table[type].cstrName = cstr;
+	    Type2Table[type].rcharName = rchar;
+	    Type2Table[type].rstrName = rstr;
+	    Type2Table[type].rsymName = rsym;
+	} else {
+	    Type2Table[type].cstrName = NULL;
+	    Type2Table[type].rcharName = NULL;
+	    Type2Table[type].rstrName = NULL;
+	    Type2Table[type].rsymName = NULL;
+	}
     }
 }
 
 SEXP type2str_nowarn(SEXPTYPE t) /* returns a CHARSXP */
 {
     if (t < MAX_NUM_SEXPTYPE) { /* FIXME: branch not really needed */
-        SEXP res = Type2Table[t].rcharName;
-        if (res != NULL) return res;
+	SEXP res = Type2Table[t].rcharName;
+	if (res != NULL) return res;
     }
     return R_NilValue;
 }
@@ -300,7 +298,7 @@ SEXP type2str(SEXPTYPE t) /* returns a CHARSXP */
 {
     SEXP s = type2str_nowarn(t);
     if (s != R_NilValue) {
-        return s;
+	return s;
     }
     warning(_("type %d is unimplemented in '%s'"), t, "type2str");
     char buf[50];
@@ -311,10 +309,10 @@ SEXP type2str(SEXPTYPE t) /* returns a CHARSXP */
 SEXP type2rstr(SEXPTYPE t) /* returns a STRSXP */
 {
     if (t < MAX_NUM_SEXPTYPE) { /* FIXME: branch not really needed */
-        SEXP res = Type2Table[t].rstrName;
-        if (res != NULL) return res;
+	SEXP res = Type2Table[t].rstrName;
+	if (res != NULL) return res;
     }
-    error(_("type %d is unimplemented in '%s'"), t, 
+    error(_("type %d is unimplemented in '%s'"), t,
 	  "type2ImmutableScalarString");
     return R_NilValue; /* for -Wall */
 }
@@ -322,8 +320,8 @@ SEXP type2rstr(SEXPTYPE t) /* returns a STRSXP */
 const char *type2char(SEXPTYPE t) /* returns a char* */
 {
     if (t < MAX_NUM_SEXPTYPE) { /* FIXME: branch not really needed */
-        const char * res = Type2Table[t].cstrName;
-        if (res != NULL) return res;
+	const char * res = Type2Table[t].cstrName;
+	if (res != NULL) return res;
     }
     warning(_("type %d is unimplemented in '%s'"), t, "type2char");
     static char buf[50];
@@ -335,10 +333,10 @@ const char *type2char(SEXPTYPE t) /* returns a char* */
 SEXP NORET type2symbol(SEXPTYPE t)
 {
     if (t >= 0 && t < MAX_NUM_SEXPTYPE) { /* FIXME: branch not really needed */
-        SEXP res = Type2Table[t].rsymName;
-        if (res != NULL) {
-            return res;
-        }
+	SEXP res = Type2Table[t].rsymName;
+	if (res != NULL) {
+	    return res;
+	}
     }
     error(_("type %d is unimplemented in '%s'"), t, "type2symbol");
 }
@@ -762,7 +760,7 @@ SEXP attribute_hidden do_setwd(SEXP call, SEXP op, SEXP args, SEXP rho)
 	error(_("missing value is invalid"));
 
     /* get current directory to return */
-    wd = intern_getwd();
+    PROTECT(wd = intern_getwd());
 
 #ifdef Win32
     {
@@ -778,6 +776,7 @@ SEXP attribute_hidden do_setwd(SEXP call, SEXP op, SEXP args, SEXP rho)
 	error(_("cannot change working directory"));
     }
 #endif
+    UNPROTECT(1); /* wd */
     return(wd);
 }
 
@@ -1368,6 +1367,39 @@ Rboolean utf8Valid(const char *str)
     return valid_utf8(str, strlen(str)) == 0;
 }
 
+SEXP attribute_hidden do_validUTF8(SEXP call, SEXP op, SEXP args, SEXP rho)
+{
+    checkArity(op, args);
+    SEXP x = CAR(args);
+    if (!isString(x))
+	error(_("invalid '%s' argument"), "x");
+    R_xlen_t n = XLENGTH(x);
+    SEXP ans = allocVector(LGLSXP, n); // no allocation below
+    int *lans = LOGICAL(ans);
+    for (R_xlen_t i = 0; i < n; i++)
+	lans[i] = utf8Valid(CHAR(STRING_ELT(x, i)));
+    return ans;
+}
+
+SEXP attribute_hidden do_validEnc(SEXP call, SEXP op, SEXP args, SEXP rho)
+{
+    checkArity(op, args);
+    SEXP x = CAR(args);
+    if (!isString(x))
+	error(_("invalid '%s' argument"), "x");
+    R_xlen_t n = XLENGTH(x);
+    SEXP ans = allocVector(LGLSXP, n); // no allocation below
+    int *lans = LOGICAL(ans);
+    for (R_xlen_t i = 0; i < n; i++) {
+	SEXP p = STRING_ELT(x, i);
+	if (IS_BYTES(p) || IS_LATIN1(p)) lans[i] = 1;
+	else if (IS_UTF8(p) || utf8locale) lans[i] = utf8Valid(CHAR(p));
+	else if(mbcslocale) lans[i] = mbcsValid(CHAR(p));
+	else lans[i] = 1;
+    }
+    return ans;
+}
+
 
 /* MBCS-aware versions of common comparisons.  Only used for ASCII c */
 char *Rf_strchr(const char *s, int c)
@@ -1637,7 +1669,10 @@ double R_strtod5(const char *str, char **endptr, char dec,
 	    case '+': p++;
 	    default: ;
 	    }
-	    for (n = 0; *p >= '0' && *p <= '9'; p++) n = n * 10 + (*p - '0');
+	    /* The test for n is in response to PR#16358; it's not right if the exponent is
+	       very large, but the overflow or underflow below will handle it. */
+#define MAX_EXPONENT_PREFIX 9999
+	    for (n = 0; *p >= '0' && *p <= '9'; p++) n = (n < MAX_EXPONENT_PREFIX) ? n * 10 + (*p - '0') : n;
 	    if (ans != 0.0) { /* PR#15976:  allow big exponents on 0 */
 		expn += expsign * n;
 		if(exph > 0) expn -= exph;
@@ -1673,7 +1708,7 @@ double R_strtod5(const char *str, char **endptr, char dec,
 	case '+': p++;
 	default: ;
 	}
-	for (n = 0; *p >= '0' && *p <= '9'; p++) n = n * 10 + (*p - '0');
+	for (n = 0; *p >= '0' && *p <= '9'; p++) n = (n < MAX_EXPONENT_PREFIX) ? n * 10 + (*p - '0') : n;
 	expn += expsign * n;
     }
 
@@ -1743,7 +1778,7 @@ SEXP attribute_hidden do_enc2(SEXP call, SEXP op, SEXP args, SEXP env)
 	if (PRIMVAL(op) || known_to_be_utf8) { /* enc2utf8 */
 	    if (IS_UTF8(el) || IS_ASCII(el) || IS_BYTES(el)) continue;
 	    if (!duped) { ans = PROTECT(duplicate(ans)); duped = TRUE; }
-	    SET_STRING_ELT(ans, i, 
+	    SET_STRING_ELT(ans, i,
 			   mkCharCE(translateCharUTF8(el), CE_UTF8));
 	} else if (ENC_KNOWN(el)) { /* enc2native */
 	    if (IS_ASCII(el) || IS_BYTES(el)) continue;
@@ -1944,7 +1979,7 @@ SEXP attribute_hidden do_ICUset(SEXP call, SEXP op, SEXP args, SEXP rho)
 		collationLocaleSet = 2;
 	    } else {
 		if(strcmp(s, "none")) {
-		    if(streql(s, "default")) 
+		    if(streql(s, "default"))
 			uloc_setDefault(getLocale(), &status);
 		    else uloc_setDefault(s, &status);
 		    if(U_FAILURE(status))
@@ -1988,15 +2023,15 @@ SEXP attribute_hidden do_ICUget(SEXP call, SEXP op, SEXP args, SEXP rho)
     checkArity(op, args);
 
     if (collationLocaleSet == 2) {
-        ans = "ASCII";
+	ans = "ASCII";
     } else if(collator) {
 	UErrorCode  status = U_ZERO_ERROR;
 	int type = asInteger(CAR(args));
 	if (type < 1 || type > 2)
 	    error(_("invalid '%s' value"), "type");
-	
-	res = ucol_getLocaleByType(collator, 
-				   type == 1 ? ULOC_ACTUAL_LOCALE : ULOC_VALID_LOCALE, 
+
+	res = ucol_getLocaleByType(collator,
+				   type == 1 ? ULOC_ACTUAL_LOCALE : ULOC_VALID_LOCALE,
 				   &status);
 	if(!U_FAILURE(status) && res) ans = res;
     } else ans = "ICU not in use";
@@ -2009,12 +2044,13 @@ attribute_hidden
 int Scollate(SEXP a, SEXP b)
 {
     if (!collationLocaleSet) {
+	int errsv = errno;      /* OSX may set errno in the operations below. */
 	collationLocaleSet = 1;
 #ifndef Win32
 	if (strcmp("C", getLocale()) ) {
 #else
 	const char *p = getenv("R_ICU_LOCALE");
-        if(p && p[0]) {
+	if(p && p[0]) {
 #endif
 	    UErrorCode status = U_ZERO_ERROR;
 	    uloc_setDefault(getLocale(), &status);
@@ -2026,6 +2062,7 @@ int Scollate(SEXP a, SEXP b)
 		error("failed to open ICU collator (%d)", status);
 	    }
 	}
+	errno = errsv;
     }
     if (collator == NULL)
 	return collationLocaleSet == 2 ?
@@ -2176,7 +2213,7 @@ SEXP attribute_hidden do_tabulate(SEXP call, SEXP op, SEXP args, SEXP rho)
 	error(_("invalid '%s' argument"), "nbin");
     SEXP ans = allocVector(INTSXP, nb);
     int *x = INTEGER(in), *y = INTEGER(ans);
-    memset(y, 0, nb * sizeof(int));
+    if (nb) memset(y, 0, nb * sizeof(int));
     for(R_xlen_t i = 0 ; i < n ; i++)
 	if (x[i] != NA_INTEGER && x[i] > 0 && x[i] <= nb) y[x[i] - 1]++;
     return ans;
@@ -2264,7 +2301,7 @@ SEXP attribute_hidden do_pretty(SEXP call, SEXP op, SEXP args, SEXP rho)
 
 /*
     r <- .Internal(formatC(x, as.character(mode), width, digits,
-                   as.character(format), as.character(flag), i.strlen))
+		   as.character(format), as.character(flag), i.strlen))
 */
 
 static void
@@ -2358,10 +2395,8 @@ SEXP attribute_hidden do_formatC(SEXP call, SEXP op, SEXP args, SEXP rho)
 
 #ifdef Win32
 /* avoid latest MinGW's redefinition in stdio.h */
-int trio_sprintf(char *buffer, const char *format, ...);
-#define sprintf trio_sprintf
+#include <trioremap.h>
 #endif
-
 #include <Rmath.h>		/* fround */
 
 static

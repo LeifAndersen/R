@@ -15,7 +15,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 /* Names of  .Internal(.) and .Primitive(.)  R functions
@@ -33,7 +33,6 @@
 #if Win32
 SEXP do_mkjunction(SEXP, SEXP, SEXP, SEXP);
 SEXP do_shellexec(SEXP, SEXP, SEXP, SEXP);
-SEXP do_setInternet2(SEXP, SEXP, SEXP, SEXP);
 SEXP do_syswhich(SEXP, SEXP, SEXP, SEXP);
 SEXP do_tzone_name(SEXP, SEXP, SEXP, SEXP);
 #else
@@ -175,6 +174,7 @@ SEXP do_first_min(SEXP, SEXP, SEXP, SEXP);
 SEXP do_flush(SEXP, SEXP, SEXP, SEXP);
 SEXP do_flushconsole(SEXP, SEXP, SEXP, SEXP);
 SEXP do_for(SEXP, SEXP, SEXP, SEXP);
+SEXP do_forceAndCall(SEXP, SEXP, SEXP, SEXP);
 SEXP do_format(SEXP, SEXP, SEXP, SEXP);
 SEXP do_formatC(SEXP, SEXP, SEXP, SEXP);
 SEXP do_formatinfo(SEXP, SEXP, SEXP, SEXP);
@@ -239,6 +239,7 @@ SEXP do_lazyLoadDBflush(SEXP, SEXP, SEXP, SEXP);
 SEXP do_lazyLoadDBinsertValue(SEXP call, SEXP op, SEXP args, SEXP env);
 SEXP do_length(SEXP, SEXP, SEXP, SEXP);
 SEXP do_lengthgets(SEXP, SEXP, SEXP, SEXP);
+SEXP do_lengths(SEXP, SEXP, SEXP, SEXP);
 SEXP do_levelsgets(SEXP, SEXP, SEXP, SEXP);
 SEXP do_listdirs(SEXP, SEXP, SEXP, SEXP);
 SEXP do_listfiles(SEXP, SEXP, SEXP, SEXP);
@@ -388,6 +389,7 @@ SEXP do_sprintf(SEXP, SEXP, SEXP, SEXP);
 SEXP do_standardGeneric(SEXP, SEXP, SEXP, SEXP);
 SEXP NORET do_stop(SEXP, SEXP, SEXP, SEXP);
 SEXP do_storage_mode(SEXP, SEXP, SEXP, SEXP);
+SEXP do_strrep(SEXP, SEXP, SEXP, SEXP);
 SEXP do_strsplit(SEXP,SEXP,SEXP,SEXP);
 SEXP do_strptime(SEXP,SEXP,SEXP,SEXP);
 SEXP do_strtrim(SEXP,SEXP,SEXP,SEXP);
@@ -440,6 +442,8 @@ SEXP do_unsetenv(SEXP, SEXP, SEXP, SEXP);
 SEXP do_unzip(SEXP, SEXP, SEXP, SEXP);
 SEXP NORET do_usemethod(SEXP, SEXP, SEXP, SEXP);
 SEXP do_utf8ToInt(SEXP, SEXP, SEXP, SEXP);
+SEXP do_validEnc(SEXP, SEXP, SEXP, SEXP);
+SEXP do_validUTF8(SEXP, SEXP, SEXP, SEXP);
 SEXP do_vapply(SEXP, SEXP, SEXP, SEXP);
 SEXP do_version(SEXP, SEXP, SEXP, SEXP);
 SEXP do_warning(SEXP, SEXP, SEXP, SEXP);

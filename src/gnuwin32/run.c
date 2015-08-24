@@ -16,7 +16,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 #ifdef HAVE_CONFIG_H
@@ -36,6 +36,8 @@
 #include "run.h"
 
 #include <Startup.h> /* for CharacterMode and RGui */
+
+#include <trioremap.h>
 
 static char RunError[501] = "";
 

@@ -1,8 +1,8 @@
 #  File src/library/utils/R/completion.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
-# Copyright (C) 2006  Deepayan Sarkar
-#               2006-2014  The R Core Team
+# Copyright     2006 Deepayan Sarkar
+#           (C) 2006-2015  The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 
 
@@ -427,8 +427,8 @@ specialOpLocs <- function(text)
 
 
 
-## accessing the help system: should allow anything with an index entry
-## this just looks at packages on the search path.
+## Accessing the help system: should allow anything with an index entry.
+## This just looks at packages on the search path.
 
 matchAvailableTopics <- function(prefix, text)
 {
@@ -548,7 +548,9 @@ keywordCompletions <- function(text)
 
 
 ## 'package' environments in the search path.  These will be completed
-## with a ::
+## with a :: (Use of this is function is replaced by
+## loadedPackageCompletions below, which also completes packages
+## loaded, but not necessarily attached).
 
 
 attachedPackageCompletions <- function(text, add = rc.getOption("package.suffix"))
@@ -568,11 +570,26 @@ attachedPackageCompletions <- function(text, add = rc.getOption("package.suffix"
     else character()
 }
 
+loadedPackageCompletions <- function(text, add = rc.getOption("package.suffix"))
+{
+    ## FIXME: Will not allow fuzzy completions. See comment in keywordCompletions() above
+    if (.CompletionEnv$settings[["ns"]])
+    {
+        s <- loadedNamespaces()
+        comps <- findExactMatches(sprintf("^%s", makeRegexpSafe(text)), s)
+        if (length(comps) && !is.null(add))
+            sprintf("%s%s", comps, add)
+        else
+            comps
+    }
+    else character()
+}
+
 
 
 ## this provides the most basic completion, looking for completions in
 ## the search path using apropos, plus keywords.  Plus completion on
-## attached packages if settings$ns == TRUE
+## attached/loaded packages if settings$ns == TRUE
 
 
 normalCompletions <-
@@ -596,7 +613,7 @@ normalCompletions <-
                     sprintf("%s%s", comps[which.function], add.fun)
             ##sprintf("\033[31m%s\033[0m%s", comps[which.function], add.fun)
         }
-        c(comps, keywordCompletions(text), attachedPackageCompletions(text))
+        c(comps, keywordCompletions(text), loadedPackageCompletions(text))
     }
 }
 
@@ -665,7 +682,7 @@ inFunction <-
 
     temp <-
         data.frame(i = c(parens[["("]], parens[[")"]]),
-                   c = rep(c(1, -1), sapply(parens, length)))
+                   c = rep(c(1, -1), lengths(parens)))
     if (nrow(temp) == 0) return(character())
     temp <- temp[order(-temp$i), , drop = FALSE] ## order backwards
     wp <- which(cumsum(temp$c) > 0)
@@ -921,6 +938,10 @@ fileCompletions <- function(token)
 
 .completeToken <- function()
 {
+    ## Allow override by user-specified function
+    custom.completer <- rc.getOption("custom.completer")
+    if (is.function(custom.completer))
+        return (custom.completer(.CompletionEnv))
     text <- .CompletionEnv[["token"]]
     if (isInsideQuotes())
     {
@@ -1112,7 +1133,7 @@ fileCompletions <- function(token)
         {
             comps <- paste0(prefix, comps)
         }
-        comps <- c(comps, fargComps)
+        comps <- c(fargComps, comps)
         .CompletionEnv[["comps"]] <- comps
     }
 }

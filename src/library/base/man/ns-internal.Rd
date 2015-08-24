@@ -1,6 +1,6 @@
 % File src/library/base/man/ns-internal.Rd
-% Part of the R package, http://www.R-project.org
-% Copyright 1995-2014 R Core Team
+% Part of the R package, https://www.R-project.org
+% Copyright 1995-2015 R Core Team
 % Distributed under GPL 2 or later
 
 \name{ns-internals}
@@ -8,6 +8,7 @@
 
 \alias{asNamespace}
 \alias{getNamespaceInfo}
+\alias{.getNamespaceInfo}
 \alias{importIntoEnv}
 \alias{isBaseNamespace}
 \alias{isNamespace}
@@ -27,10 +28,12 @@
 \alias{.knownS3Generics}
 \alias{loadingNamespaceInfo}
 \alias{.getNamespace}
+\alias{.getNamespaceInfo}
 \alias{..getNamespace}
 \usage{
 asNamespace(ns, base.OK = TRUE)
-getNamespaceInfo(ns, which)
+getNamespaceInfo (ns, which)
+.getNamespaceInfo(ns, which)
 importIntoEnv(impenv, impnames, expenv, expnames)
 isBaseNamespace(ns)
 isNamespace(ns)
@@ -76,18 +79,34 @@ loadingNamespaceInfo()
   \item{name}{symbol: name of namespace}
 }
 \description{
-  Internal namespace support functions.  Not intended to be called directly.
+  Internal namespace support functions.  Not intended to be called
+  directly, and only visible because of the special nature of the
+  \pkg{base} namespace.
 }
 \details{
   \code{packageHasNamespace} does not indicate if the package has a
-  namespace, rather if it has a \file{NAMESPACE} file, which \code{base}
-  and many older packages do not.  But then you are not intended to be
-  using it \dots.
+  namespace (all now do), rather if it has a \file{NAMESPACE} file,
+  which \pkg{base} and some legacy packages do not.  But then you are
+  not intended to be using it \dots.
 }
-
-\keyword{internal}
-\author{Luke Tierney}
+\seealso{
+  \code{\link{loadNamespace}} or \code{\link{getNamespace}} are somewhat
+  higher level namespace related functions.
+}
+\author{
+  Luke Tierney and other members of the R Core Team.
+}
 \examples{
+nsName <- "stats"
+(ns <- asNamespace(nsName)) # <environment: namespace:stats>
+
+## Inverse function of asNamespace() :
+environmentName(asNamespace("stats")) # "stats"
+environmentName(asNamespace("base"))  # "base"
+getNamespaceInfo(ns, "spec")[["name"]] ## -> "stats"
+\dontshow{stopifnot(identical(nsName,
+                      getNamespaceInfo(ns, "spec")[["name"]]))}
+
 ## Only for for the daring ones, trying to get into the bowels :
 
 lsNamespaceInfo <- function(ns, ...) {
@@ -99,3 +118,4 @@ allinfoNS <- function(ns) sapply(lsNamespaceInfo(ns), getNamespaceInfo, ns=ns)
 utils::str(allinfoNS("stats"))
 utils::str(allinfoNS("stats4"))
 }
+\keyword{internal}

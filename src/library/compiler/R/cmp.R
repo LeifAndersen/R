@@ -1,7 +1,7 @@
 #  Automatically generated from ../noweb/compiler.nw.
 #
 #  File src/library/compiler/R/cmp.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #  Copyright (C) 2001-2014 Luke Tierney
 #
 #  This program is free software; you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 ##
 ## Compiler options
@@ -2379,8 +2379,8 @@ setInlineHandler("switch", function(e, cb, cntxt) {
 
         ## collect information on named alternatives and check for
         ## multiple default cases.
-        haveNames <- !is.null(nm)
-        if (haveNames) {
+        if (! is.null(nm)) {
+            haveNames <- TRUE
             ndflt <- sum(nm == "")
             if (ndflt > 1) {
                 notifyMultipleSwitchDefaults(ndflt, cntxt)
@@ -2389,9 +2389,13 @@ setInlineHandler("switch", function(e, cb, cntxt) {
                 cmpSpecial(e, cb, cntxt)
                 return(TRUE)
             }
-            haveCharDflt <- (ndflt > 0)
+            if (ndflt > 0)
+                haveCharDflt <- TRUE
+            else
+                haveCharDflt <- FALSE
         }
         else {
+            haveNames <- FALSE
             haveCharDflt <- FALSE
         }
 
@@ -2894,7 +2898,7 @@ bcprof <- function(expr) {
     expr
     .Internal(bcprofstop())
     val <- structure(.Internal(bcprofcounts()),
-                     names = compiler:::Opcodes.names)
+                     names = Opcodes.names)
     hits <- sort(val[val > 0], decreasing = TRUE)
     pct <- round(100 * hits / sum(hits), 1)
     data.frame(hits = hits, pct = pct)

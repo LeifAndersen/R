@@ -1,7 +1,7 @@
 #  File src/library/tools/R/index.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
-#  Copyright (C) 1995-2014 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 ### Miscellaneous indexing functions.
 
@@ -61,7 +61,7 @@ function(dataDir, contents)
     ## Note that NROW(contents) might be 0.
     if(length(datasets) && NROW(contents)) {
         aliasIndices <-
-            rep(1 : NROW(contents), sapply(contents$Aliases, length))
+            rep(1 : NROW(contents), lengths(contents$Aliases))
         idx <- match(datasets, unlist(contents$Aliases), 0L)
         dataIndex[which(idx != 0L), 2L] <-
             contents[aliasIndices[idx], "Title"]
@@ -144,13 +144,13 @@ function(demoDir)
 print.check_demo_index <-
 function(x, ...)
 {
-    if(length(x$missing_from_index)) {
-        writeLines("Demos with missing or empty index information:")
-        print(x$missing_from_index, ...)
+    if(length(bad <- x$missing_from_index)) {
+        writeLines(c("Demos with missing or empty index information:",
+                     paste(" ", bad)))
     }
-    if(length(x$missing_from_demos)) {
-        writeLines("Demo index entries without corresponding demo:")
-        print(x$missing_from_demos, ...)
+    if(length(bad <- x$missing_from_demos)) {
+        writeLines(c("Demo index entries without corresponding demo:",
+                     paste(" ", bad)))
     }
     invisible(x)
 }
@@ -209,37 +209,39 @@ function(contents, packageName, defaultEncoding = NULL)
         ## without aliases are useless ...)
         if(length(tmp <- unlist(aliases)))
             dbAliases <-
-                cbind(tmp, rep.int(IDs, sapply(aliases, length)),
+                cbind(tmp, rep.int(IDs, lengths(aliases)),
                       packageName)
         ## And similarly if there are no keywords at all.
         if(length(tmp <- unlist(keywords)))
             dbKeywords <-
-                cbind(tmp, rep.int(IDs, sapply(keywords, length)),
+                cbind(tmp, rep.int(IDs, lengths(keywords)),
                       packageName)
         ## Finally, concepts are a feature added in R 1.8 ...
         if("Concepts" %in% colnames(contents)) {
             concepts <- contents[, "Concepts"]
             if(length(tmp <- unlist(concepts)))
                 dbConcepts <-
-                    cbind(tmp, rep.int(IDs, sapply(concepts, length)),
+                    cbind(tmp, rep.int(IDs, lengths(concepts)),
                           packageName)
         }
     }
     else
         dbBase <- matrix(character(), ncol = 7L)
 
-    colnames(dbBase) <-
-        c("Package", "LibPath", "ID", "name", "title", "topic",
-          "Encoding")
-    colnames(dbAliases) <-
-        c("Aliases", "ID", "Package")
-    colnames(dbKeywords) <-
-        c("Keywords", "ID", "Package")
-    colnames(dbConcepts) <-
-        c("Concepts", "ID", "Package")
+    colnames(dbBase) <- hsearch_index_colnames$Base
+    colnames(dbAliases) <- hsearch_index_colnames$Aliases
+    colnames(dbKeywords) <- hsearch_index_colnames$Keywords
+    colnames(dbConcepts) <- hsearch_index_colnames$Concepts
 
     list(dbBase, dbAliases, dbKeywords, dbConcepts)
 }
+
+hsearch_index_colnames <-
+    list(Base = c("Package", "LibPath", "ID", "Name", "Title", "Topic",
+         "Encoding"),
+         Aliases = c("Alias", "ID", "Package"),
+         Keywords = c("Keyword", "ID", "Package"),
+         Concepts = c("Concept", "ID", "Package"))
 
 ### * .build_links_index
 
@@ -248,7 +250,7 @@ function(contents, package)
 {
     if(length(contents)) {
         aliases <- contents$Aliases
-        lens <- sapply(aliases, length)
+        lens <- lengths(aliases)
         files <- sub("\\.[Rr]d$", "\\.html", contents$File)
         structure(file.path("../..", package, "html", rep.int(files, lens)),
                   names = unlist(aliases))

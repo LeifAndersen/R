@@ -1,5 +1,5 @@
 #  File src/library/methods/R/makeBasicFunsList.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
 #  Copyright (C) 1995-2015 The R Core Team
 #
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 ## the executable code to complete the generics corresponding to primitives,
 ## and to define the group generics for these functions.
@@ -39,7 +39,7 @@ utils::globalVariables(".addBasicGeneric")
 
     ## Next, add the remaining primitive generics
     prims <- names(.GenericArgsEnv)
-    new_prims <- prims[!prims %in% names(funs)]
+    new_prims <- setdiff(prims, names(funs))
     for(nm in new_prims) {
         f <- get(nm, envir = .GenericArgsEnv)
         body(f) <- substitute(standardGeneric(ff), list(ff=val))
@@ -47,9 +47,9 @@ utils::globalVariables(".addBasicGeneric")
     }
 
     ## Then add all the primitives that are not already there.
-    ff <- names(BE <- baseenv())
-    prims <- ff[vapply(ff, function(x) is.primitive(BE[[x]]), NA)]
-    new_prims <- prims[!prims %in% names(funs)]
+    ff <- as.list(baseenv(), all.names=TRUE)
+    prims <- ff[vapply(ff, is.primitive, logical(1L))]
+    new_prims <- setdiff(names(prims), names(funs))
     add <- rep(list(FALSE), length(new_prims))
     names(add) <- new_prims
     funs <- c(funs, add)
@@ -191,6 +191,9 @@ utils::globalVariables(".addBasicGeneric")
     setGeneric("norm", function(x, type, ...) standardGeneric("norm"),
 	       useAsDefault = function(x, type, ...) base::norm(x, type, ...),
 	       signature = c("x", "type"), where = where)
+    ## this method *belong*s to the generic:
+    setMethod("norm", signature(x = "ANY", type = "missing"),
+              function (x, type, ...) norm(x, type = "O", ...))
     setGenericImplicit("norm", where, FALSE)
 
     setGeneric("backsolve", function(r, x, k = ncol(r), upper.tri = TRUE, transpose = FALSE, ...)
@@ -227,12 +230,34 @@ utils::globalVariables(".addBasicGeneric")
     setGenericImplicit("rowMeans", where, FALSE)
     setGenericImplicit("rowSums",  where, FALSE)
 
+    setGeneric("crossprod", function(x, y = NULL, ...) standardGeneric("crossprod"),
+	       useAsDefault = function(x, y = NULL, ...) base::crossprod(x, y),
+	       signature = c("x", "y"), where = where)
+    setGeneric("tcrossprod", function(x, y = NULL, ...) standardGeneric("tcrossprod"),
+	       useAsDefault = function(x, y = NULL, ...) base::tcrossprod(x, y),
+	       signature = c("x", "y"), where = where)
+    setGenericImplicit("crossprod",  where, FALSE)
+    setGenericImplicit("tcrossprod",  where, FALSE)
+
     setGeneric("sample", function(x, size, replace = FALSE, prob = NULL, ...)
 			standardGeneric("sample"),
 	       useAsDefault = function(x, size, replace = FALSE, prob = NULL, ...)
 			base::sample(x, size, replace=replace, prob=prob, ...),
 	       signature = c("x", "size"), where = where)
     setGenericImplicit("sample", where, FALSE)
+
+    ## qr.R(): signature should only have "qr", args should have "..."
+    setGeneric("qr.R", function(qr, complete = FALSE, ...) standardGeneric("qr.R"),
+	       useAsDefault= function(qr, complete = FALSE, ...)
+                   base::qr.R(qr, complete=complete),
+	       signature = "qr", where = where)
+    setGenericImplicit("qr.R", where, FALSE)
+
+    ## our toeplitz() only has 'x'; want the generic "here" rather than "out there"
+    setGeneric("toeplitz", function(x, ...) standardGeneric("toeplitz"),
+	       useAsDefault= function(x, ...) stats::toeplitz(x),
+	       signature = "x", where = where)
+    setGenericImplicit("toeplitz", where, FALSE)
 
     ## not implicitGeneric() which is not yet available "here"
     registerImplicitGenerics(where = where)

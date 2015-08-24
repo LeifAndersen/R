@@ -1,5 +1,5 @@
 #  File src/library/graphics/R/image.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
 #  Copyright (C) 1995-2014 The R Core Team
 #
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 image <- function(x, ...) UseMethod("image")
 
@@ -60,15 +60,17 @@ image.default <- function (x = seq(0, 1, length.out = nrow(z)),
 	stop("increasing 'x' and 'y' values expected")
     if (!is.matrix(z))
         stop("'z' must be a matrix")
+    if (!typeof(z) %in% c("logical", "integer", "double"))
+        stop("'z' must be numeric or logical")
     if (length(x) > 1 && length(x) == nrow(z)) { # midpoints
         dx <- 0.5*diff(x)
-        x <- c(x[1L] - dx[1L], x[-length(x)]+dx,
-               x[length(x)]+dx[length(x)-1])
+        x <- c(x[1L] - dx[1L], x[-length(x)] + dx,
+               x[length(x)] + dx[length(x)-1])
     }
     if (length(y) > 1 && length(y) == ncol(z)) { # midpoints
         dy <- 0.5*diff(y)
-        y <- c(y[1L] - dy[1L], y[-length(y)]+dy,
-               y[length(y)]+dy[length(y)-1L])
+        y <- c(y[1L] - dy[1L], y[-length(y)] + dy,
+               y[length(y)] + dy[length(y)-1L])
     }
 
     if (missing(breaks)) {

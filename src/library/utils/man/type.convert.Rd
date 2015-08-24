@@ -1,5 +1,5 @@
 % File src/library/utils/man/type.convert.Rd
-% Part of the R package, http://www.R-project.org
+% Part of the R package, https://www.R-project.org
 % Copyright 1995-2014 R Core Team
 % Distributed under GPL 2 or later
 
@@ -25,6 +25,7 @@ type.convert(x, na.strings = "NA", as.is = FALSE, dec = ".",
   \item{numerals}{string indicating how to convert numbers whose
     conversion to double precision would lose accuracy, typically when
     \code{x} has more digits than can be stored in a \code{\link{double}}.
+    Can be abbreviated.  Possible values are
     \describe{
       \item{\code{numerals = "allow.loss"}, default:}{the conversion
 	happens with some accuracy loss.  This has been the only

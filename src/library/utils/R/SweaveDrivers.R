@@ -1,5 +1,5 @@
 #   File src/library/utils/R/SweaveDrivers.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
 #  Copyright (C) 1995-2014 The R Core Team
 #
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 RweaveLatex <- function()
 {
@@ -461,7 +461,7 @@ RweaveLatexWritedoc <- function(object, chunk)
 	               filenum <- attr(chunk, "srcFilenum")[pos[1L]]
                        filename <- attr(chunk, "srcFilenames")[filenum]
                        location <- paste0(basename(filename), ":", attr(chunk, "srclines")[pos[1L]])
-		       stop("at ",location, ", ", conditionMessage(e), call. = FALSE)
+		       stop("at ",location, ", ", conditionMessage(e), domain = NA, call. = FALSE)
 		   })
             ## protect against character(), because sub() will fail
             if (length(val) == 0L) val <- ""
@@ -633,7 +633,7 @@ RweaveEvalWithOpt <- function (expr, options)
         if (inherits(res, "try-error")) return(res)
         if (options$print || (options$term && res$visible)) {
             if (.isMethodsDispatchOn() && isS4(res$value))
-                methods:::show(res$value) else print(res$value)
+                methods::show(res$value) else print(res$value)
         }
     }
     res

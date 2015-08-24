@@ -1,7 +1,7 @@
 #  File src/library/stats/R/pairwise.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
-#  Copyright (C) 1995-2012 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 pairwise.t.test <-
 function(x, g, p.adjust.method = p.adjust.methods, pool.sd = !paired,
@@ -133,11 +133,11 @@ function(compare.levels, level.names, p.adjust.method)
 }
 
 print.pairwise.htest <-
-function(x, ...)
+function(x, digits = max(1L, getOption("digits") - 5L), ...)
 {
     cat("\n\tPairwise comparisons using", x$method, "\n\n")
     cat("data: ", x$data.name, "\n\n")
-    pp <- format.pval(x$p.value, 2, na.form="-")
+    pp <- format.pval(x$p.value, digits=digits, na.form="-")
     attributes(pp) <- attributes(x$p.value)
     print(pp, quote=FALSE, ...)
     cat("\nP value adjustment method:", x$p.adjust.method, "\n")

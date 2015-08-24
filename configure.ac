@@ -2,7 +2,7 @@
 ###
 ### Process this file with autoconf to produce a configure script.
 ###
-### Copyright (C) 1998-2014 R Core Team
+### Copyright (C) 1998-2015 R Core Team
 ###
 ### This file is part of R.
 ###
@@ -319,7 +319,6 @@ AC_ARG_ENABLE([prebuilt-html],
 [want_prebuilt_html=no])
 AM_CONDITIONAL(BUILD_HTML, [test "x${want_prebuilt_html}" = xyes])
 
-
 AC_ARG_ENABLE([lto],
 [AS_HELP_STRING([--enable-lto],[enable link-time optimization @<:@no@:>@])],
 [want_lto="${enableval}"], [want_lto=no])
@@ -334,6 +333,11 @@ AC_SUBST(LTO)
 AC_SUBST(LTOALL)
 AM_CONDITIONAL(BUILD_LTO, [test "x${want_lto}" != xno])
 
+AC_ARG_ENABLE([java],
+[AS_HELP_STRING([--enable-java],[enable Java @<:@yes@:>@])],
+[want_java="${enableval}"],
+[want_java=yes])
+AM_CONDITIONAL(WANT_JAVA, [test "x${want_java}" = xyes])
 
 ### ** Optional packages.
 
@@ -411,26 +415,10 @@ AC_ARG_WITH([libtiff],
 [AS_HELP_STRING([--with-libtiff],[use libtiff library (if available) @<:@yes@:>@])],
 [R_ARG_USE(libtiff)],
 [use_libtiff=yes])
-AC_ARG_WITH([system-zlib],
-[AS_HELP_STRING([--with-system-zlib],[use system zlib library (if available) @<:@yes@:>@])],
-[R_ARG_USE_SYSTEM(zlib)],
-[use_system_zlib=yes])
-AC_ARG_WITH([system-bzlib],
-[AS_HELP_STRING([--with-system-bzlib],[use system bzlib library (if available) @<:@yes@:>@])],
-[R_ARG_USE_SYSTEM(bzlib)],
-[use_system_bzlib=yes])
-AC_ARG_WITH([system-pcre],
-[AS_HELP_STRING([--with-system-pcre],[use system PCRE library (if available) @<:@yes@:>@])],
-[R_ARG_USE_SYSTEM(pcre)],
-[use_system_pcre=yes])
 AC_ARG_WITH([system-tre],
 [AS_HELP_STRING([--with-system-tre],[use system tre library (if available) @<:@no@:>@])],
 [R_ARG_USE_SYSTEM(tre)],
 [use_system_tre=no])
-AC_ARG_WITH([system-xz],
-[AS_HELP_STRING([--with-system-xz],[use system xz (lzma) library (if available) @<:@yes@:>@])],
-[R_ARG_USE_SYSTEM(xz)],
-[use_system_xz=yes])
 
 ## Valgrind instrumentation
 AC_ARG_WITH([valgrind-instrumentation],
@@ -814,8 +802,8 @@ AC_HEADER_SYS_WAIT
 ## sys/param.h is one way to get PATH_MAX.
 ## sched.h is POSIX, but we use it for Linux-specific features (affinity)
 ## stdalign.h is C11.
-AC_CHECK_HEADERS(arpa/inet.h dl.h dlfcn.h elf.h fcntl.h floatingpoint.h \
-  fpu_control.h glob.h grp.h langinfo.h \
+AC_CHECK_HEADERS(arpa/inet.h dl.h dlfcn.h elf.h features.h fcntl.h \
+  floatingpoint.h fpu_control.h glob.h grp.h langinfo.h \
   netdb.h netinet/in.h pwd.h sched.h strings.h \
   sys/param.h sys/resource.h sys/select.h sys/socket.h \
   sys/stat.h sys/time.h sys/times.h sys/utsname.h unistd.h utime.h)
@@ -1675,6 +1663,7 @@ dylib_ldflags="${SHLIB_LDFLAGS}"
 LIBR_LDFLAGS=""
 RLAPACK_LDFLAGS=""
 RBLAS_LDFLAGS=""
+R_DYLIB_VERSION_SUFFIX=""
 case "${host_os}" in
   aix*)
     ## Not needed for -brtl linking
@@ -1701,13 +1690,18 @@ case "${host_os}" in
     fi
     ;;
   openbsd*)
-    PACKAGE_VERSION_MAJOR=`echo "${PACKAGE_VERSION}" | \
-      sed -e "s/\.//" -e "s/\..*$//"`
-    PACKAGE_VERSION_MINOR=`echo "${PACKAGE_VERSION}" | \
-      sed -e "s/.*\.\([[^.]][[^.]]*$\)/\1/"`
-    DYLIB_EXT=".so.${PACKAGE_VERSION_MAJOR}.${PACKAGE_VERSION_MINOR}"
+    if test -z "${R_DYLIB_VERSION}"; then
+      PACKAGE_VERSION_MAJOR=`echo "${PACKAGE_VERSION}" | \
+        sed -e "s/\.//" -e "s/\..*$//"`
+      PACKAGE_VERSION_MINOR=`echo "${PACKAGE_VERSION}" | \
+        sed -e "s/.*\.\([[^.]][[^.]]*$\)/\1/"`
+      R_DYLIB_VERSION="${PACKAGE_VERSION_MAJOR}.${PACKAGE_VERSION_MINOR}"
+    fi
+    R_DYLIB_VERSION_SUFFIX=".${R_DYLIB_VERSION}"
     ;;
 esac
+
+R_DYLIB_EXT="${DYLIB_EXT}${R_DYLIB_VERSION_SUFFIX}"
 
 if test -z "${DYLIB_LD}"; then
   dylib_ld_was_given=no
@@ -1751,6 +1745,7 @@ AC_SUBST(LAPACK_LDFLAGS)
 AC_SUBST(FW_VERSION)
 AC_SUBST(STATICR1)
 AC_SUBST(STATICR2)
+AC_SUBST(R_DYLIB_EXT)
 
 ## C++11 and later
 R_CXX1X
@@ -2026,8 +2021,18 @@ fi
 R_FUNC_LOG1P
 R_FUNC_FTELL
 R_FUNC_SIGACTION
-R_MKTIME_ERRNO
-R_FUNC_MKTIME
+
+if test x${use_internal_tzcode} = xdefault; then
+case "${host_os}" in
+   darwin*)
+     use_internal_tzcode=yes;
+     ;; 
+esac
+fi
+if test "${use_internal_tzcode}" != yes; then
+  R_MKTIME_ERRNO
+  R_FUNC_MKTIME
+fi
 
 R_C99_COMPLEX
 
@@ -2053,8 +2058,9 @@ fi
 AC_CACHE_CHECK([whether 'struct tm' includes tm_gmtoff],
                 [r_cv_have_tm_gmtoff],
 [AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
-// glibc needs this defined.
+// glibc needs this defined, second for >= 2.20
 #define _BSD_SOURCE
+#define _DEFAULT_SOURCE
 #include <time.h>
 
 int main() {
@@ -2304,52 +2310,9 @@ R_PCRE
 ## tre headers and libraries.
 R_TRE
 
+
 ## libcurl
-AC_PATH_PROG(CURL_CONFIG, curl-config)
-if test -n "${CURL_CONFIG}"; then
-  if test -z "${CURL_CPPFLAGS}"; then
-    CURL_CPPFLAGS=`${CURL_CONFIG} --cflags`
-  fi
-  ## This in particular may be wrong for a static library,
-  ## and OpenCSW has in the past copied the static answer over the dynamic one.
-  if test -z "${CURL_LIBS}"; then
-    CURL_LIBS=`${CURL_CONFIG} --libs`
-  fi
-fi
-r_save_CPPFLAGS="${CPPLAGS}"
-CPPFLAGS="${CURL_CPPFLAGS} ${CPPFLAGS}"
-r_save_LIBS="${LIBS}"
-LIBS="${CURL_LIBS} ${LIBS}"
-AC_CACHE_CHECK([if libcurl version >= 7.28.0], [r_cv_have_curl728],
-[AC_RUN_IFELSE([AC_LANG_SOURCE([[
-#include <stdlib.h>
-#include <curl/curl.h>
-int main() 
-{
-#ifdef LIBCURL_VERSION_MAJOR
-#if LIBCURL_VERSION_MAJOR > 7
-  exit(1);
-#elif LIBCURL_VERSION_MAJOR == 7 && LIBCURL_VERSION_MINOR >= 28
-  exit(0);
-#else
-  exit(1);
-#endif
-#else
-  exit(1);
-#endif
-}
-]])], [r_cv_have_curl728=yes], [r_cv_have_curl728=no], [r_cv_have_curl728=no])])
-if test "x${r_cv_have_curl728}" != xyes; then
-  ac_cv_have_curl_curl_h=0
-  CURL_CPPFLAGS=
-  CURL_LIBS=
-else
-  AC_CHECK_HEADERS(curl/curl.h)
-fi
-CPPFLAGS="${r_save_CPPFLAGS}"
-LIBS="${r_save_LIBS}"
-AC_SUBST(CURL_CPPFLAGS)
-AC_SUBST(CURL_LIBS)
+R_LIBCURL
 
 ## POSIX times.
 R_SYS_POSIX_LEAPSECONDS
@@ -2384,13 +2347,6 @@ fi
 
 AC_DEFINE_UNQUOTED(VALGRIND_LEVEL, ${valgrind_level}, [Define as 1 or 2 to specify levels of Valgrind instrumentation])
 
-if test x${use_internal_tzcode} = xdefault; then
-case "${host_os}" in
-   darwin*)
-     use_internal_tzcode=yes;
-     ;; 
-esac
-fi
 
 if test "x${use_internal_tzcode}" = xyes; then
   AC_DEFINE(USE_INTERNAL_MKTIME, 1, [Define to use internal time-zone code])
@@ -2700,21 +2656,16 @@ case "${host_os}" in
     AC_DEFINE(HAVE_ICONV, 1, [Define if you have the iconv() function.])
     AC_DEFINE(HAVE_ICONVLIST, 1, [Define if you have the `iconvlist' function.])
     AC_DEFINE(HAVE_ICONV_H, 1, [Define to 1 if you have the <iconv.h> header file.])
-    AC_DEFINE(HAVE_INTERNET, 1, [Define if you have support for ftp/http
-                                 access.])
     AC_DEFINE(HAVE_JPEG, 1,[Define if you have the JPEG headers and libraries.])
     AC_DEFINE(HAVE_PNG, 1, [Define if you have the PNG headers and libraries.])
     AC_DEFINE(HAVE_POSIX_SETJMP, 1, [Define if you have POSIX.1 compatible
                                      sigsetjmp/siglongjmp.])
-    AC_DEFINE(HAVE_SOCKETS, 1, [Define if you have support for sockets.])
     AC_DEFINE(HAVE_TCLTK, 1, [Define if you have the Tcl/Tk headers and 
                               libraries and want Tcl/Tk support to be built.] )
     AC_DEFINE(HAVE_TIFF, 1, [Define this if libtiff is available.])
     AC_DEFINE(HAVE_TIMES, 1, [Define to 1 if you have the `times' function.])
     want_R_profiling=yes
     AC_DEFINE(R_PROFILING, 1, [Define this to enable R-level profiling.])
-    AC_DEFINE(SUPPORT_LIBXML, 1, [Define if you provide support for the libxml
-                                  ftp/http functions.])
     ;;
 esac
 
@@ -2739,14 +2690,10 @@ AC_CONFIG_FILES(
   src/appl/Makefile
   src/extra/Makefile
   src/extra/blas/Makefile
-  src/extra/bzip2/Makefile
   src/extra/intl/Makefile
-  src/extra/pcre/Makefile
   src/extra/tre/Makefile
   src/extra/tzone/Makefile
   src/extra/xdr/Makefile
-  src/extra/xz/Makefile
-  src/extra/zlib/Makefile
   src/include/Makefile
   src/include/Rmath.h0
   src/include/R_ext/Makefile
@@ -2876,18 +2823,6 @@ if test "${acx_lapack_ok}" = "yes"; then
   esac
   R_SH_VAR_ADD(r_external_libs, [LAPACK(${r_lapack})], [, ])
 fi
-if test "${have_zlib}" = yes; then
-  R_SH_VAR_ADD(r_external_libs, [zlib], [, ])
-fi
-if test "${have_bzlib}" = yes; then
-  R_SH_VAR_ADD(r_external_libs, [bzlib], [, ])
-fi
-if test "${have_lzma}" = yes; then
-  R_SH_VAR_ADD(r_external_libs, [lzma], [, ])
-fi
-if test "${have_pcre}" = yes; then
-  R_SH_VAR_ADD(r_external_libs, [PCRE], [, ])
-fi
 if test "${have_tre}" = yes; then
   R_SH_VAR_ADD(r_external_libs, [tre], [, ])
 fi
@@ -2973,7 +2908,7 @@ R is now configured for ${host}
   Fortran 77 compiler:       ${r_f77_compiler}
 
   C++ compiler:              ${r_cxx_compiler}
-  C++ 11 compiler:           ${r_cxx1x_compiler}
+  C++11 compiler:            ${r_cxx1x_compiler}
   Fortran 90/95 compiler:    ${r_f95_compiler}
   Obj-C compiler:	     ${r_objc_compiler}
 

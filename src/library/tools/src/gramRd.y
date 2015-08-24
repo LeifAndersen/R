@@ -16,7 +16,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 #ifdef HAVE_CONFIG_H
@@ -211,8 +211,8 @@ VerbatimArg1 VerbatimArg2 IfDefTarget ArgItems Option
 
 %%
 
-Init:		STARTFILE RdFile END_OF_INPUT		{ xxsavevalue($2, &@$); UNPROTECT_PTR($1); return 0; }
-	|	STARTFRAGMENT RdFragment END_OF_INPUT	{ xxsavevalue($2, &@$); UNPROTECT_PTR($1); return 0; }
+Init:		STARTFILE RdFile END_OF_INPUT		{ xxsavevalue($2, &@$); UNPROTECT_PTR($1); YYACCEPT; }
+	|	STARTFRAGMENT RdFragment END_OF_INPUT	{ xxsavevalue($2, &@$); UNPROTECT_PTR($1); YYACCEPT; }
 	|	error					{ PROTECT(parseState.Value = R_NilValue);  YYABORT; }
 	;
 
@@ -269,7 +269,7 @@ Markup:		LATEXMACRO  LatexArg 		{ $$ = xxmarkup($1, $2, STATIC, &@$); }
 	|	ESCAPE				{ $$ = xxmarkup($1, R_NilValue, STATIC, &@$); }
 	|	IFDEF IfDefTarget ArgItems ENDIF { $$ = xxmarkup2($1, $2, $3, 2, HAS_IFDEF, &@$); UNPROTECT_PTR($4); }
 	|	IFDEF IfDefTarget ArgItems error { $$ = xxmarkup2($1, $2, $3, 2, HAS_IFDEF, &@$); }
-	|	VERBLATEX   VerbatimArg1 LatexArg2 { $$ = xxmarkup2($1, $2, $3, 2, STATIC, &@$); }
+	|	VERBLATEX   VerbatimArg LatexArg2 { $$ = xxmarkup2($1, $2, $3, 2, STATIC, &@$); }
 	
 UserMacro:	NEWCOMMAND  VerbatimArg1 VerbatimArg { $$ = xxnewcommand($1, $2, $3, &@$); }
 	|	USERMACRO			{ $$ = xxusermacro($1, xxnewlist(NULL), &@$); }
@@ -1298,7 +1298,7 @@ static void yyerror(const char *s)
     	snprintf(ParseErrorMsg, PARSE_ERROR_SIZE, "%s", s);
     }
     filename = findVar(install("filename"), SrcFile);
-    if (isString(filename) && length(filename))
+    if (isString(filename) && LENGTH(filename))
     	strncpy(ParseErrorFilename, CHAR(STRING_ELT(filename, 0)), PARSE_ERROR_SIZE - 1);
     else
         ParseErrorFilename[0] = '\0';
@@ -1860,11 +1860,11 @@ SEXP C_deparseRd(SEXP e, SEXP state)
     char *outbuf, *out, lookahead;
     Rboolean escape;
 
-    if(!isString(e) || length(e) != 1) 
+    if(!isString(e) || LENGTH(e) != 1) 
     	error(_("'deparseRd' only supports deparsing character elements"));
     e = STRING_ELT(e, 0);
     
-    if(!isInteger(state) || length(state) != 5) error(_("bad state"));
+    if(!isInteger(state) || LENGTH(state) != 5) error(_("bad state"));
     
     PushState();
     

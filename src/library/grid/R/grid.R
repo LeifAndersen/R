@@ -1,5 +1,5 @@
 #  File src/library/grid/R/grid.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
 #  Copyright (C) 1995-2015 The R Core Team
 #
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 
 # FIXME:  all grid functions should check that .grid.started is TRUE
@@ -287,20 +287,12 @@ current.parent <- function(n=1) {
 }
 
 vpListFromNode <- function(node) {
-  childnames <- names(node$children)
-  n <- length(childnames)
-  children <- vector("list", n)
-  index <- 1
-  for (i in childnames) {
-    children[[index]] <- vpTreeFromNode(get(i, envir=node$children))
-    index <- index + 1
-  }
-  vpListFromList(children)
+  vpListFromList(eapply(node$children, vpTreeFromNode, all.names=TRUE))
 }
 
 vpTreeFromNode <- function(node) {
   # If no children then just return viewport
-  if (length(names(node$children)) == 0)
+  if (no.children(node$children))
     vpFromPushedvp(node)
   # Otherwise return vpTree
   else
@@ -487,7 +479,7 @@ grid.Call.graphics <- function(fnname, ...) {
   engineDLon <- grid.Call(L_getEngineDLon)
   if (engineDLon) {
     # NOTE that we need a .Call.graphics("L_gridDirty") so that
-    # the the first thing on the engine display list is a dirty
+    # the first thing on the engine display list is a dirty
     # operation;  this is necessary in case the display list is
     # played on another device (e.g., via replayPlot() or dev.copy())
     .Call.graphics(L_gridDirty)

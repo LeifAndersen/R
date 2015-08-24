@@ -1,5 +1,5 @@
 % File src/library/base/man/options.Rd
-% Part of the R package, http://www.R-project.org
+% Part of the R package, https://www.R-project.org
 % Copyright 1995-2015 R Core Team
 % Distributed under GPL 2 or later
 
@@ -32,12 +32,12 @@ getOption(x, default = NULL)
 \arguments{
   \item{\dots}{any options can be defined, using \code{name = value}.
     However, only the ones below are used in base \R.
-    
+
     Options can also be passed by giving a single unnamed argument which
     is a named list.
   }
   \item{x}{a character string holding an option name.}
-  
+
   \item{default}{if the specified option is not set in the options list,
     this value is returned.  This facilitates retrieving an option and
     checking whether it is set and setting it separately if not.}
@@ -74,7 +74,7 @@ getOption(x, default = NULL)
       used by \code{\link{plot.lm}}.}
 
     \item{\code{browserNLdisabled}:}{logical: whether newline is
-      disabled as a synonym for \code{"n"} is the browser.}
+      disabled as a synonym for \code{"n"} in the browser.}
 
     \item{\code{checkPackageLicense}:}{logical, not set by default.  If
       true, \code{\link{library}} asks a user to accept any non-standard
@@ -131,8 +131,9 @@ getOption(x, default = NULL)
 
     \item{\code{download.file.method}:}{Method to be used for
       \code{download.file}.  Currently download methods
-      \code{"internal"}, \code{"wget"} and \code{"lynx"} are available.
-      There is no default for this option, when \code{method = "auto"}
+      \code{"internal"}, \code{"wininet"} (Windows only),
+      \code{"libcurl"}, \code{"wget"} and \code{"curl"} are available.
+      If not set, \code{method = "auto"}
       is chosen: see \code{\link{download.file}}.}
 
     \item{\code{echo}:}{logical.  Only used in non-interactive mode,
@@ -190,9 +191,11 @@ getOption(x, default = NULL)
       point in output conversions, that is in printing, plotting,
       \code{\link{format}} and \code{\link{as.character}} but not when
       deparsing nor by \code{\link{sprintf}} nor \code{\link{formatC}}
-      (which are sometimes used prior to printing.
+      (which are sometimes used prior to printing.)
 
       Only single-byte characters were supported prior to \R 3.2.0.
+      In \R 3.2.1 and earlier, multi- (or zero-) character \code{OutDec}
+      were accepted, but always worked only partially.
     }
 
     \item{\code{pager}:}{the command used for displaying text files by
@@ -250,7 +253,7 @@ getOption(x, default = NULL)
 #ifdef unix
     \item{\code{rl_word_breaks}:}{Used for the readline-based terminal
       interface.  Default value \code{" \\t\\n\\"\\\\'`><=\%;,|&{()}"}.%"
-	
+
       This is the set of characters use to break the input line into
       tokens for object- and file-name completion.  Those who do not use
       spaces around operators may prefer\cr
@@ -491,15 +494,16 @@ getOption(x, default = NULL)
   \describe{
     \item{\code{BioC_mirror}:}{The URL of a Bioconductor mirror
       for use by \code{\link{setRepositories}},
-      e.g.\sspace{}the default \samp{"http://www.bioconductor.org"}
+      e.g.\sspace{}the default \samp{"https://bioconductor.org"}
       or the European mirror
-      \samp{"http://bioconductor.statistik.tu-dortmund.de"}.  Can be set
+      \samp{"https://bioconductor.statistik.tu-dortmund.de"}.  Can be set
       by \code{\link{chooseBioCmirror}}.}
 
-    \item{\code{browser}:}{default HTML browser used by
-      \code{\link{help.start}()} and \code{\link{browseURL}} on UNIX, or
-      a non-default browser on Windows.  Alternatively, an \R function that
-      is called with a URL as its argument.}
+    \item{\code{browser}:}{The HTML browser to be used by
+      \code{\link{browseURL}}.  This sets the default browser on UNIX or
+      a non-default browser on Windows.  Alternatively, an \R function
+      that is called with a URL as its argument.  See
+      \code{\link{browseURL}} for further details.}
 
     \item{\code{ccaddress}:}{default Cc: address used by
       \code{\link{create.post}} (and hence\code{\link{bug.report}} and
@@ -537,11 +541,11 @@ getOption(x, default = NULL)
     \item{\code{help_type}:}{default for an argument of
     \code{\link{help}}, used also as the help type by \code{\link{?}}.}
 
-    \item{\code{HTTPUserAgent}:}{string used as the user agent in HTTP
-      requests.  If \code{NULL}, HTTP requests will be made without a
-      user agent header.  The default is \code{R (<version> <platform>
-	<arch> <os>)}}
-
+    \item{\code{HTTPUserAgent}:}{string used as the user agent in HTTP(S)
+      requests.  If \code{NULL}, requests will be made without a
+      user agent header.
+      The default is \code{R (<version> <platform> <arch> <os>)} .}
+    
     \item{\code{install.lock}:}{logical: should per-directory package
       locking be used by \code{\link{install.packages}}?  Most useful
       for binary installs on OS X and Windows, but can be used in a
@@ -550,21 +554,22 @@ getOption(x, default = NULL)
       the character string \code{"pkgloack"}.}
 
     \item{\code{internet.info}:}{The minimum level of information to be
-      printed on URL downloads etc, using the \code{"internal"} method.
+      printed on URL downloads etc, using the \code{"internal"} and
+      \code{"libcurl"} methods.
       Default is 2, for failure causes.  Set to 1 or 0 to get more
-      detailed information.
-  
-      For methods based on \code{libcurl} a value less than 2 (the
-      default) selects verbose output.
+      detailed information (for the \code{"internal"} method 0 provides
+      more information than 1).
     }
 
     \item{\code{install.packages.check.source}:}{Used by
-      \code{\link{install.packages}} on platforms which support binary
+      \code{\link{install.packages}} (and indirectly
+      \code{\link{update.packages}}) on platforms which support binary
       packages.  Possible values \code{"yes"} and \code{"no"}, with
       unset being equivalent to \code{"yes"}.}
 
     \item{\code{install.packages.compile.from.source}:}{Used by
-      \code{\link{install.packages}(type = "both")} on platforms which
+      \code{\link{install.packages}(type = "both")} (and indirectly
+      \code{\link{update.packages}}) on platforms which
       support binary packages.  Possible values are \code{"never"},
       \code{"interactive"} (which means ask in interactive use and
       \code{"never"} in batch use) and \code{"always"}.  The default is
@@ -573,7 +578,7 @@ getOption(x, default = NULL)
       \code{"interactive"} if unset.  However, \code{install.packages}
       uses \code{"never"} unless a \command{make} program is found,
       consulting the environment variable \env{MAKE}.}
-    
+
     \item{\code{mailer}:}{default emailing method used by
       \code{\link{create.post}} and hence \code{\link{bug.report}} and
       \code{\link{help.request}}.}
@@ -633,6 +638,9 @@ getOption(x, default = NULL)
       used.
 #endif
     }
+      
+    \item{\code{useHTTPS}:}{logical.  Used by \code{\link{chooseCRANmirror}}:
+      are secure mirrors preferred?  If not set, \code{TRUE} is assumed.}
   }
 }
 \section{Options set in package parallel}{

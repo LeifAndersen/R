@@ -1,5 +1,5 @@
 #  File src/library/stats/R/reshape.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
 #  Copyright (C) 1995-2013 The R Core Team
 #
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 reshape <-
     function(data, varying = NULL, v.names = NULL, timevar = "time",
@@ -240,8 +240,10 @@ reshape <-
                times <- back$times
            }
 
-           if (is.matrix(varying))
-               varying <- split(varying, row(varying))
+           if (is.matrix(varying)) {
+               ## <FIXME split.matrix>
+               varying <- split(c(varying), row(varying))
+           }
            if (is.null(varying))
                stop("'varying' must be nonempty list or vector")
            if(is.atomic(varying)) {

@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
  *  Copyright (C) 1995, 1996  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 1998--2014  The R Core Team.
+ *  Copyright (C) 1998--2015  The R Core Team.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 /*
@@ -48,9 +48,9 @@
 
    level 0 is no additional instrumentation
    level 1 marks uninitialized numeric, logical, integer, raw,
-           complex vectors and R_alloc memory
+	   complex vectors and R_alloc memory
    level 2 marks the data section of vector nodes as inaccessible
-           when they are freed.
+	   when they are freed.
 
    level 3 was withdrawn in R 3.2.0.
 
@@ -78,12 +78,6 @@
 // internal version of headers
 #  include "vg/memcheck.h"
 # endif
-# ifndef VALGRIND_MAKE_MEM_NOACCESS
-// old headers (<= 3.3.0?)
-#  define VALGRIND_MAKE_MEM_NOACCESS VALGRIND_MAKE_NOACCESS
-#  define VALGRIND_MAKE_MEM_DEFINED VALGRIND_MAKE_READABLE
-#  define VALGRIND_MAKE_MEM_UNDEFINED VALGRIND_MAKE_WRITABLE
-# endif
 #endif
 
 
@@ -94,6 +88,7 @@
 #include <R_ext/Rdynload.h>
 #include <R_ext/Rallocators.h> /* for R_allocator_t structure */
 #include <Rmath.h> // R_pow_di
+#include <Print.h> // R_print
 
 #if defined(Win32)
 extern void *Rm_malloc(size_t n);
@@ -220,7 +215,7 @@ const char *sexptype2char(SEXPTYPE type) {
     case RAWSXP:	return "RAWSXP";
     case NEWSXP:	return "NEWSXP"; /* should never happen */
     case FREESXP:	return "FREESXP";
-    default:	 	return "<unknown>";
+    default:		return "<unknown>";
     }
 }
 
@@ -1600,6 +1595,9 @@ static void RunGenCollect(R_size_t size_needed)
     FORWARD_NODE(R_FalseValue);
     FORWARD_NODE(R_LogicalNAValue);
 
+    FORWARD_NODE(R_print.na_string);
+    FORWARD_NODE(R_print.na_string_noquote);
+
     if (R_SymbolTable != NULL)             /* in case of GC during startup */
 	for (i = 0; i < HSIZE; i++)        /* Symbol table */
 	    FORWARD_NODE(R_SymbolTable[i]);
@@ -1613,7 +1611,7 @@ static void RunGenCollect(R_size_t size_needed)
 	    FORWARD_NODE(gdd->displayList);
 	    FORWARD_NODE(gdd->savedSnapshot);
 	    if (gdd->dev)
-	    	FORWARD_NODE(gdd->dev->eventEnv);
+		FORWARD_NODE(gdd->dev->eventEnv);
 	}
     }
 
@@ -1644,6 +1642,9 @@ static void RunGenCollect(R_size_t size_needed)
 #else
 	FORWARD_NODE(*sp);
 #endif
+
+    FORWARD_NODE(R_CachedScalarReal);
+    FORWARD_NODE(R_CachedScalarInteger);
 
     /* main processing loop */
     PROCESS_NODES();
@@ -1761,11 +1762,11 @@ static void RunGenCollect(R_size_t size_needed)
 
     /* tell Valgrind about free nodes */
 #if VALGRIND_LEVEL > 1
-    for(i = 1; i< NUM_NODE_CLASSES; i++) { 
-	for(s = NEXT_NODE(R_GenHeap[i].New); 
-	    s != R_GenHeap[i].Free; 
+    for(i = 1; i< NUM_NODE_CLASSES; i++) {
+	for(s = NEXT_NODE(R_GenHeap[i].New);
+	    s != R_GenHeap[i].Free;
 	    s = NEXT_NODE(s)) {
-	    VALGRIND_MAKE_MEM_NOACCESS(DATAPTR(s), 
+	    VALGRIND_MAKE_MEM_NOACCESS(DATAPTR(s),
 				       NodeClassSize[i]*sizeof(VECREC));
 	}
     }
@@ -1867,7 +1868,7 @@ SEXP attribute_hidden do_gctorture2(SEXP call, SEXP op, SEXP args, SEXP rho)
 {
     int gap, wait;
     Rboolean inhibit;
-    SEXP old = ScalarInteger(gc_force_gap);
+    int old = gc_force_gap;
 
     checkArity(op, args);
     gap = asInteger(CAR(args));
@@ -1875,7 +1876,7 @@ SEXP attribute_hidden do_gctorture2(SEXP call, SEXP op, SEXP args, SEXP rho)
     inhibit = asLogical(CADDR(args));
     R_gc_torture(gap, wait, inhibit);
 
-    return old;
+    return ScalarInteger(old);
 }
 
 /* initialize gctorture settings from environment variables */
@@ -2171,7 +2172,7 @@ char *S_alloc(long nelem, int eltsize)
     R_size_t size  = nelem * eltsize;
     char *p = R_alloc(nelem, eltsize);
 
-    memset(p, 0, size);
+    if(p) memset(p, 0, size);
     return p;
 }
 
@@ -2181,7 +2182,7 @@ char *S_realloc(char *p, long new, long old, int size)
     size_t nold;
     char *q;
     /* shrinking is a no-op */
-    if(new <= old) return p;
+    if(new <= old) return p; // so nnew > 0 below
     q = R_alloc((size_t)new, size);
     nold = (size_t)old * size;
     memcpy(q, p, nold);
@@ -2745,15 +2746,15 @@ SEXP allocFormalsList(int nargs, ...) {
     va_start(syms, nargs);
 
     for(i = 0; i < nargs; i++) {
-        res = CONS(R_NilValue, res);
+	res = CONS(R_NilValue, res);
     }
     R_PreserveObject(res);
 
     n = res;
     for(i = 0; i < nargs; i++) {
-        SET_TAG(n, (SEXP) va_arg(syms, SEXP));
-        MARK_NOT_MUTABLE(n);
-        n = CDR(n);
+	SET_TAG(n, (SEXP) va_arg(syms, SEXP));
+	MARK_NOT_MUTABLE(n);
+	n = CDR(n);
     }
     va_end(syms);
 
@@ -2849,6 +2850,11 @@ static void gc_end_timing(void)
 
 static void R_gc_internal(R_size_t size_needed)
 {
+    if (!R_GCEnabled) {
+      AdjustHeapSize(size_needed);
+      return;
+    }
+
     R_size_t onsize = R_NSize /* can change during collection */;
     double ncells, vcells, vfrac, nfrac;
     SEXPTYPE first_bad_sexp_type = 0;
@@ -3127,10 +3133,10 @@ void R_ProtectWithIndex(SEXP s, PROTECT_INDEX *pi)
 
 void NORET R_signal_reprotect_error(PROTECT_INDEX i)
 {
-    error(ngettext("R_Reprotect: only %d protected items, can't reprotect index %d",
+    error(ngettext("R_Reprotect: only %d protected item, can't reprotect index %d",
 		   "R_Reprotect: only %d protected items, can't reprotect index %d",
 		   R_PPStackTop),
-          R_PPStackTop, i);
+	  R_PPStackTop, i);
 }
 
 #ifndef INLINE_PROTECT
@@ -3334,6 +3340,11 @@ void (SET_RTRACE)(SEXP x, int v) { SET_RTRACE(CHK(x), v); }
 int (SETLEVELS)(SEXP x, int v) { return SETLEVELS(CHK(x), v); }
 void DUPLICATE_ATTRIB(SEXP to, SEXP from) {
     SET_ATTRIB(CHK(to), duplicate(CHK(ATTRIB(CHK(from)))));
+    SET_OBJECT(CHK(to), OBJECT(from));
+    IS_S4_OBJECT(from) ?  SET_S4_OBJECT(to) : UNSET_S4_OBJECT(to);
+}
+void SHALLOW_DUPLICATE_ATTRIB(SEXP to, SEXP from) {
+    SET_ATTRIB(CHK(to), shallow_duplicate(CHK(ATTRIB(CHK(from)))));
     SET_OBJECT(CHK(to), OBJECT(from));
     IS_S4_OBJECT(from) ?  SET_S4_OBJECT(to) : UNSET_S4_OBJECT(to);
 }
@@ -3878,10 +3889,10 @@ int Seql(SEXP a, SEXP b)
     if (IS_CACHED(a) && IS_CACHED(b) && ENC_KNOWN(a) == ENC_KNOWN(b))
 	return 0;
     else {
-    	SEXP vmax = R_VStack;
-    	int result = !strcmp(translateCharUTF8(a), translateCharUTF8(b));
-    	R_VStack = vmax; /* discard any memory used by translateCharUTF8 */
-    	return result;
+	SEXP vmax = R_VStack;
+	int result = !strcmp(translateCharUTF8(a), translateCharUTF8(b));
+	R_VStack = vmax; /* discard any memory used by translateCharUTF8 */
+	return result;
     }
 }
 

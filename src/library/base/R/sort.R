@@ -1,7 +1,7 @@
 #  File src/library/base/R/sort.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
-#  Copyright (C) 1995-2012 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 sort <- function(x, decreasing = FALSE, ...)
 {
@@ -100,7 +100,7 @@ order <- function(..., na.last = TRUE, decreasing = FALSE)
 {
     z <- list(...)
     if(any(unlist(lapply(z, is.object)))) {
-        z <- lapply(z, function(x) if(is.object(x)) xtfrm(x) else x)
+        z <- lapply(z, function(x) if(is.object(x)) as.vector(xtfrm(x)) else x)
         if(!is.na(na.last))
             return(do.call("order", c(z, na.last = na.last,
                                       decreasing = decreasing)))
@@ -111,15 +111,14 @@ order <- function(..., na.last = TRUE, decreasing = FALSE)
     }
 
     ## na.last = NA case: remove nas
-    if(any(diff(l.z <- vapply(z, length, 1L)) != 0L))
+    if(any(diff((l.z <- lengths(z)) != 0L)))
         stop("argument lengths differ")
-    ans <- vapply(z, is.na, rep.int(NA, l.z[1L]))
-    ok <- if(is.matrix(ans)) !apply(ans, 1, any) else !any(ans)
+    na <- vapply(z, is.na, rep.int(NA, l.z[1L]))
+    ok <- if(is.matrix(na)) rowSums(na) == 0L else !any(na)
     if(all(!ok)) return(integer())
     z[[1L]][!ok] <- NA
     ans <- do.call("order", c(z, decreasing = decreasing))
-    keep <- seq_along(ok)[ok]
-    ans[ans %in% keep]
+    ans[ok[ans]]
 }
 
 sort.list <- function(x, partial = NULL, na.last = TRUE, decreasing = FALSE,
@@ -155,10 +154,11 @@ sort.list <- function(x, partial = NULL, na.last = TRUE, decreasing = FALSE,
 ## xtfrm is now primitive
 ## xtfrm <- function(x) UseMethod("xtfrm")
 xtfrm.default <- function(x)
-    if(is.numeric(x)) unclass(x) else as.vector(rank(x, ties.method="min", na.last="keep"))
+    if(is.numeric(x)) unclass(x) else as.vector(rank(x, ties.method = "min",
+                                                     na.last = "keep"))
 xtfrm.factor <- function(x) as.integer(x) # primitive, so needs a wrapper
 xtfrm.Surv <- function(x)
-    if(ncol(x) == 2L) order(x[,1L], x[,2L]) else order(x[,1L], x[,2L], x[,3L]) # needed by 'party'
+    order(if(ncol(x) == 2L) order(x[,1L], x[,2L]) else order(x[,1L], x[,2L], x[,3L])) # needed by 'party'
 xtfrm.AsIs <- function(x)
 {
     if(length(cl <- class(x)) > 1) oldClass(x) <- cl[-1L]

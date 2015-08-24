@@ -14,7 +14,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 /* <UTF8> byte-level access is only to compare with chars <= 0x7F */
@@ -33,6 +33,9 @@
 #include <errno.h>
 #include <ctype.h>		/* for isspace */
 #include <stdarg.h>
+#ifdef Win32
+#include <trioremap.h>
+#endif
 
 /* From time to time changes in R, such as the addition of a new SXP,
  * may require changes in the save file format.  Here are some
@@ -190,7 +193,7 @@ static int Rsnprintf(char *buf, int size, const char *format, ...)
     int val;
     va_list(ap);
     va_start(ap, format);
-    /* On Windows this uses the non-C99 MSVCRT.dll version, which is OK */
+    /* On Windows this no longer uses the non-C99 MSVCRT.dll version */
     val = vsnprintf(buf, size, format, ap);
     buf[size-1] = '\0';
     va_end(ap);
@@ -812,7 +815,7 @@ static void WriteLENGTH(R_outpstream_t stream, SEXP s)
 	OutInteger(stream, -1);
 	R_xlen_t len = XLENGTH(s);
 	OutInteger(stream, (int)(len / 4294967296L));
- 	OutInteger(stream, (int)(len % 4294967296L));
+	OutInteger(stream, (int)(len % 4294967296L));
    } else OutInteger(stream, LENGTH(s));
 #else
     OutInteger(stream, LENGTH(s));
@@ -844,13 +847,13 @@ static void OutStringVec(R_outpstream_t stream, SEXP s, SEXP ref_table)
 #define min2(a, b) ((a) < (b)) ? (a) : (b)
 
 
-static R_INLINE void 
-OutIntegerVec(R_outpstream_t stream, SEXP s, R_xlen_t length) 
+static R_INLINE void
+OutIntegerVec(R_outpstream_t stream, SEXP s, R_xlen_t length)
 {
     switch (stream->type) {
     case R_pstream_xdr_format:
     {
-        static char buf[CHUNK_SIZE * sizeof(int)];
+	static char buf[CHUNK_SIZE * sizeof(int)];
 	R_xlen_t done, this;
 	XDR xdrs;
 	for (done = 0; done < length; done += this) {
@@ -870,7 +873,7 @@ OutIntegerVec(R_outpstream_t stream, SEXP s, R_xlen_t length)
 	R_xlen_t done, this;
 	for (done = 0; done < length; done += this) {
 	    this = min2(CHUNK_SIZE, length - done);
-	    stream->OutBytes(stream, INTEGER(s) + done, 
+	    stream->OutBytes(stream, INTEGER(s) + done,
 			     (int)(sizeof(int) * this));
 	}
 	break;
@@ -881,16 +884,16 @@ OutIntegerVec(R_outpstream_t stream, SEXP s, R_xlen_t length)
     }
 }
 
-static R_INLINE void 
-OutRealVec(R_outpstream_t stream, SEXP s, R_xlen_t length) 
+static R_INLINE void
+OutRealVec(R_outpstream_t stream, SEXP s, R_xlen_t length)
 {
     switch (stream->type) {
     case R_pstream_xdr_format:
     {
-        static char buf[CHUNK_SIZE * sizeof(double)];
+	static char buf[CHUNK_SIZE * sizeof(double)];
 	R_xlen_t done, this;
 	XDR xdrs;
-        for (done = 0; done < length; done += this) {
+	for (done = 0; done < length; done += this) {
 	    this = min2(CHUNK_SIZE, length - done);
 	    xdrmem_create(&xdrs, buf, (int)(this * sizeof(double)), XDR_ENCODE);
 	    for(int cnt = 0; cnt < this; cnt++)
@@ -904,9 +907,9 @@ OutRealVec(R_outpstream_t stream, SEXP s, R_xlen_t length)
     case R_pstream_binary_format:
     {
 	R_xlen_t done, this;
-        for (done = 0; done < length; done += this) {
+	for (done = 0; done < length; done += this) {
 	    this = min2(CHUNK_SIZE, length - done);
-	    stream->OutBytes(stream, REAL(s) + done, 
+	    stream->OutBytes(stream, REAL(s) + done,
 			     (int)(sizeof(double) * this));
 	}
 	break;
@@ -917,22 +920,22 @@ OutRealVec(R_outpstream_t stream, SEXP s, R_xlen_t length)
     }
 }
 
-static R_INLINE void 
-OutComplexVec(R_outpstream_t stream, SEXP s, R_xlen_t length) 
+static R_INLINE void
+OutComplexVec(R_outpstream_t stream, SEXP s, R_xlen_t length)
 {
     switch (stream->type) {
     case R_pstream_xdr_format:
     {
-        static char buf[CHUNK_SIZE * sizeof(Rcomplex)];
+	static char buf[CHUNK_SIZE * sizeof(Rcomplex)];
 	R_xlen_t done, this;
 	XDR xdrs;
 	Rcomplex *c = COMPLEX(s);
-        for (done = 0; done < length; done += this) {
+	for (done = 0; done < length; done += this) {
 	    this = min2(CHUNK_SIZE, length - done);
 	    xdrmem_create(&xdrs, buf, (int)(this * sizeof(Rcomplex)), XDR_ENCODE);
 	    for(int cnt = 0; cnt < this; cnt++) {
 		if(!xdr_double(&xdrs, &(c[done+cnt].r)) ||
-		   !xdr_double(&xdrs, &(c[done+cnt].i))) 
+		   !xdr_double(&xdrs, &(c[done+cnt].i)))
 		    error(_("XDR write failed"));
 	    }
 	    stream->OutBytes(stream, buf, (int)(sizeof(Rcomplex) * this));
@@ -943,9 +946,9 @@ OutComplexVec(R_outpstream_t stream, SEXP s, R_xlen_t length)
     case R_pstream_binary_format:
     {
 	R_xlen_t done, this;
-        for (done = 0; done < length; done += this) {
+	for (done = 0; done < length; done += this) {
 	    this = min2(CHUNK_SIZE, length - done);
-	    stream->OutBytes(stream, COMPLEX(s) + done, 
+	    stream->OutBytes(stream, COMPLEX(s) + done,
 			     (int)(sizeof(Rcomplex) * this));
 	}
 	break;
@@ -1005,7 +1008,8 @@ static void WriteItem (SEXP s, SEXP ref_table, R_outpstream_t stream)
 	    warning(_("namespaces may not be available when loading"));
 #endif
 	    OutInteger(stream, NAMESPACESXP);
-	    OutStringVec(stream, R_NamespaceEnvSpec(s), ref_table);
+	    OutStringVec(stream, PROTECT(R_NamespaceEnvSpec(s)), ref_table);
+	    UNPROTECT(1);
 	}
 	else {
 	    OutInteger(stream, ENVSXP);
@@ -1122,7 +1126,7 @@ static void WriteItem (SEXP s, SEXP ref_table, R_outpstream_t stream)
 		break;
 	    }
 	    default:
-		for (R_xlen_t ix = 0; ix < len; ix++) 
+		for (R_xlen_t ix = 0; ix < len; ix++)
 		    OutByte(stream, RAW(s)[ix]);
 	    }
 	    break;
@@ -1378,16 +1382,16 @@ static SEXP InStringVec(R_inpstream_t stream, SEXP ref_table)
 }
 
 /* use static buffer to reuse storage */
-static R_INLINE void 
+static R_INLINE void
 InIntegerVec(R_inpstream_t stream, SEXP obj, R_xlen_t length)
 {
     switch (stream->type) {
     case R_pstream_xdr_format:
     {
-        static char buf[CHUNK_SIZE * sizeof(int)];
+	static char buf[CHUNK_SIZE * sizeof(int)];
 	R_xlen_t done, this;
 	XDR xdrs;
-        for (done = 0; done < length; done += this) {
+	for (done = 0; done < length; done += this) {
 	    this = min2(CHUNK_SIZE, length - done);
 	    stream->InBytes(stream, buf, (int)(sizeof(int) * this));
 	    xdrmem_create(&xdrs, buf, (int)(this * sizeof(int)), XDR_DECODE);
@@ -1401,9 +1405,9 @@ InIntegerVec(R_inpstream_t stream, SEXP obj, R_xlen_t length)
     case R_pstream_binary_format:
     {
 	R_xlen_t done, this;
-        for (done = 0; done < length; done += this) {
+	for (done = 0; done < length; done += this) {
 	    this = min2(CHUNK_SIZE, length - done);
-	    stream->InBytes(stream, INTEGER(obj) + done, 
+	    stream->InBytes(stream, INTEGER(obj) + done,
 			    (int)(sizeof(int) * this));
 	}
 	break;
@@ -1414,16 +1418,16 @@ InIntegerVec(R_inpstream_t stream, SEXP obj, R_xlen_t length)
     }
 }
 
-static R_INLINE void 
+static R_INLINE void
 InRealVec(R_inpstream_t stream, SEXP obj, R_xlen_t length)
 {
     switch (stream->type) {
     case R_pstream_xdr_format:
     {
-        static char buf[CHUNK_SIZE * sizeof(double)];
+	static char buf[CHUNK_SIZE * sizeof(double)];
 	R_xlen_t done, this;
 	XDR xdrs;
-        for (done = 0; done < length; done += this) {
+	for (done = 0; done < length; done += this) {
 	    this = min2(CHUNK_SIZE, length - done);
 	    stream->InBytes(stream, buf, (int)(sizeof(double) * this));
 	    xdrmem_create(&xdrs, buf, (int)(this * sizeof(double)), XDR_DECODE);
@@ -1437,9 +1441,9 @@ InRealVec(R_inpstream_t stream, SEXP obj, R_xlen_t length)
     case R_pstream_binary_format:
     {
 	R_xlen_t done, this;
-        for (done = 0; done < length; done += this) {
+	for (done = 0; done < length; done += this) {
 	    this = min2(CHUNK_SIZE, length - done);
-	    stream->InBytes(stream, REAL(obj) + done, 
+	    stream->InBytes(stream, REAL(obj) + done,
 			    (int)(sizeof(double) * this));
 	}
 	break;
@@ -1450,13 +1454,13 @@ InRealVec(R_inpstream_t stream, SEXP obj, R_xlen_t length)
     }
 }
 
-static R_INLINE void 
+static R_INLINE void
 InComplexVec(R_inpstream_t stream, SEXP obj, R_xlen_t length)
 {
     switch (stream->type) {
     case R_pstream_xdr_format:
     {
-        static char buf[CHUNK_SIZE * sizeof(Rcomplex)];
+	static char buf[CHUNK_SIZE * sizeof(Rcomplex)];
 	R_xlen_t done, this;
 	XDR xdrs;
 	Rcomplex *output = COMPLEX(obj);
@@ -1476,9 +1480,9 @@ InComplexVec(R_inpstream_t stream, SEXP obj, R_xlen_t length)
     case R_pstream_binary_format:
     {
 	R_xlen_t done, this;
-        for (done = 0; done < length; done += this) {
+	for (done = 0; done < length; done += this) {
 	    this = min2(CHUNK_SIZE, length - done);
-	    stream->InBytes(stream, COMPLEX(obj) + done, 
+	    stream->InBytes(stream, COMPLEX(obj) + done,
 			    (int)(sizeof(Rcomplex) * this));
 	}
 	break;
@@ -1499,7 +1503,7 @@ static R_xlen_t ReadLENGTH (R_inpstream_t stream)
 	unsigned int len1, len2;
 	len1 = InInteger(stream); /* upper part */
 	len2 = InInteger(stream); /* lower part */
-	R_xlen_t xlen = len1; 
+	R_xlen_t xlen = len1;
 	/* sanity check for now */
 	if (len1 > 65536)
 	    error (_("invalid upper part of serialized vector length"));
@@ -1557,7 +1561,7 @@ static SEXP ReadItem (SEXP ref_table, R_inpstream_t stream)
 	AddReadRef(ref_table, s);
 	return s;
     case SYMSXP:
-        R_ReadItemDepth++;
+	R_ReadItemDepth++;
 	PROTECT(s = ReadItem(ref_table, stream)); /* print name */
 	R_ReadItemDepth--;
 	s = installChar(s);
@@ -1668,7 +1672,7 @@ static SEXP ReadItem (SEXP ref_table, R_inpstream_t stream)
 		cbuf[length] = '\0';
 		int index = StrToInternal(cbuf);
 		if (index == NA_INTEGER) {
-		    warning(_("unrecognized internal function name \"%s\""), cbuf); 
+		    warning(_("unrecognized internal function name \"%s\""), cbuf);
 		    PROTECT(s = R_NilValue);
 		} else
 		    PROTECT(s = mkPRIMSXP(index, type == BUILTINSXP));
@@ -1729,7 +1733,7 @@ static SEXP ReadItem (SEXP ref_table, R_inpstream_t stream)
 	    PROTECT(s = allocVector(type, len));
 	    R_ReadItemDepth++;
 	    for (count = 0; count < len; ++count) {
-		if (R_ReadItemDepth <= 0) 
+		if (R_ReadItemDepth <= 0)
 		    Rprintf("%*s[%d]\n", 2*(R_ReadItemDepth - R_InitReadItemDepth), "", count+1);
 		SET_VECTOR_ELT(s, count, ReadItem(ref_table, stream));
 	    }
@@ -1811,7 +1815,7 @@ static SEXP ReadBCLang(int type, SEXP ref_table, SEXP reps,
 	    PROTECT(ans = allocSExp(type));
 	    if (pos >= 0)
 		SET_VECTOR_ELT(reps, pos, ans);
-            R_ReadItemDepth++;
+	    R_ReadItemDepth++;
 	    if (hasattr)
 		SET_ATTRIB(ans, ReadItem(ref_table, stream));
 	    SET_TAG(ans, ReadItem(ref_table, stream));
@@ -1823,13 +1827,13 @@ static SEXP ReadBCLang(int type, SEXP ref_table, SEXP reps,
 	    UNPROTECT(1);
 	    return ans;
 	}
-    default: 
-    	{
-    	    R_ReadItemDepth++;
-            SEXP res = ReadItem(ref_table, stream);
-            R_ReadItemDepth--;
-            return res;
-        }
+    default:
+	{
+	    R_ReadItemDepth++;
+	    SEXP res = ReadItem(ref_table, stream);
+	    R_ReadItemDepth--;
+	    return res;
+	}
     }
 }
 
@@ -2121,7 +2125,7 @@ void R_InitConnOutPStream(R_outpstream_t stream, Rconnection con,
 			  SEXP (*phook)(SEXP, SEXP), SEXP pdata)
 {
     CheckOutConn(con);
-    if (con->text && 
+    if (con->text &&
 	!(type == R_pstream_ascii_format || type == R_pstream_asciihex_format) )
 	error(_("only ascii format can be written to text mode connections"));
     R_InitOutPStream(stream, (R_pstream_data_t) con, type, version,
@@ -2378,7 +2382,7 @@ static void resize_buffer(membuf_t mb, R_size_t needed)
 #ifdef LONG_VECTOR_SUPPORT
     if(needed < 10000000) /* ca 10MB */
 	needed = (1+2*needed/INCR) * INCR;
-    else 
+    else
 	needed = (R_size_t)((1+1.2*(double)needed/INCR) * INCR);
 #else
     if(needed < 10000000) /* ca 10MB */
@@ -2522,12 +2526,13 @@ R_serialize(SEXP object, SEXP icon, SEXP ascii, SEXP Sversion, SEXP fun)
 	InitMemOutPStream(&out, &mbs, type, version, hook, fun);
 	R_Serialize(object, &out);
 
-	val =  CloseMemOutPStream(&out);
+	PROTECT(val = CloseMemOutPStream(&out));
 
 	/* end the context after anything that could raise an error but before
 	   calling OutTerm so it doesn't get called twice */
 	endcontext(&cntxt);
 
+	UNPROTECT(1); /* val */
 	return val;
     }
     else {
@@ -2622,7 +2627,7 @@ static int used = 0;
 static char names[NC][PATH_MAX];
 static char *ptr[NC];
 
-SEXP attribute_hidden 
+SEXP attribute_hidden
 do_lazyLoadDBflush(SEXP call, SEXP op, SEXP args, SEXP env)
 {
     checkArity(op, args);
@@ -2888,7 +2893,7 @@ do_serialize(SEXP call, SEXP op, SEXP args, SEXP env)
     type = CAR(args); args = CDR(args);
     ver = CAR(args); args = CDR(args);
     fun = CAR(args);
-    
+
     if(PRIMVAL(op) == 1)
 	return R_serializeb(object, icon, type, ver, fun);
     else

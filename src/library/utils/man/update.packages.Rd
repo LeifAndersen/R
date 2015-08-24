@@ -1,5 +1,5 @@
 % File src/library/utils/man/update.packages.Rd
-% Part of the R package, http://www.R-project.org
+% Part of the R package, https://www.R-project.org
 % Copyright 1995-2015 R Core Team
 % Distributed under GPL 2 or later
 
@@ -55,13 +55,13 @@ new.packages(lib.loc = NULL, repos = getOption("repos"),
     Unused if a non-\code{NULL} \code{available} is supplied.} 
   \item{instlib}{character string giving the library directory where to
     install the packages.}
-  \item{ask}{logical indicating whether to ask user before packages are
-    actually downloaded and installed, or the character string
-    \code{"graphics"}, which brings up a widget to allow the
-    user to (de-)select from the list of packages which could
-    be updated or added.  The latter value only works on
-    systems with a GUI version of \code{\link{select.list}},
-    and is otherwise equivalent to \code{ask = TRUE}.
+  \item{ask}{logical indicating whether to ask the user to select
+    packages before they are downloaded and installed, or the character
+    string \code{"graphics"}, which brings up a widget to allow the user
+    to (de-)select from the list of packages which could be updated.
+    (The latter value only works on systems with a GUI version of
+    \code{\link{select.list}}, and is otherwise equivalent to
+    \code{ask = TRUE}.)
   }
   \item{available}{
     an object as returned by \code{\link{available.packages}}
@@ -97,7 +97,7 @@ new.packages(lib.loc = NULL, repos = getOption("repos"),
   \code{\link{installed.packages}} by default) and reports installed
   packages that have newer versions on the repositories or, if
   \code{checkBuilt = TRUE}, that were built under an earlier minor
-  version of \R (for example built under 3.0.x when running \R 3.1.0).
+  version of \R (for example built under 3.1.x when running \R 3.2.0).
   (For binary package types here is no check that the version on the
   repository was built under the current minor version of \R,
   but it is advertised as being suitable for this version.)
@@ -145,6 +145,9 @@ new.packages(lib.loc = NULL, repos = getOption("repos"),
   \code{\link{available.packages}}, \code{\link{download.packages}},
   \code{\link{installed.packages}}, \code{\link{contrib.url}}.
 
+  The options listed for \code{install.packages} under
+  \code{\link{options}}.
+  
   See \code{\link{download.file}} for how to handle proxies and
   other options to monitor file transfers.
 

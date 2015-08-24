@@ -1,7 +1,7 @@
 
-R Under development (unstable) (2015-01-31 r67683) -- "Unsuffered Consequences"
+R Under development (unstable) (2015-08-23 r69165) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
-Platform: x86_64-unknown-linux-gnu (64-bit)
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -463,7 +463,8 @@ numeric(0)
    100 -1e-13    Inf   -Inf    NaN   3.14     NA 
    100      0     NA     NA     NA      3     NA 
 Warning message:
-In structure(as.integer(x), names = names(x)) : NAs introduced by coercion
+In structure(as.integer(x), names = names(x)) :
+  NAs introduced by coercion to integer range
 > ##-   100 -1e-13    Inf   -Inf    NaN   3.14     NA
 > ##-   100      0     NA     NA     NA      3     NA
 > all(is.na(ix) != is.finite(ix) | is.infinite(ix)) # TRUE (still)
@@ -3260,7 +3261,7 @@ Error in `[.data.frame`(x, 1, c("a", "c")) : undefined columns selected
 > 
 > ## methods(class = ) with namespaces, .Primitives etc (many missing in 1.7.x):
 > meth2gen <- function(cl)
-+     noquote(sub(paste("\\.",cl,"$",sep=""),"", c(methods(class = cl))))
++     noquote(sub(paste("\\.",cl,"$",sep=""),"", c(.S3methods(class = cl))))
 > meth2gen("data.frame")
  [1] $             $<-           Math          Ops           Summary      
  [6] [             [<-           [[            [[<-          aggregate    
@@ -6404,15 +6405,15 @@ function ()
 > print.function
 function (x, ...)  
  - attr(*, "srcref")=Class 'srcref'  atomic [1:8] 1 19 1 63 19 63 1 1
-  .. ..- attr(*, "srcfile")=Classes 'srcfilecopy', 'srcfile' <environment: 0x240b7c0> 
+  .. ..- attr(*, "srcfile")=Classes 'srcfilecopy', 'srcfile' <environment: 0x2e1f0e8> 
 > f
 function ()  
  - attr(*, "srcref")=Class 'srcref'  atomic [1:8] 1 17 1 28 17 28 1 1
-  .. ..- attr(*, "srcfile")=Classes 'srcfilecopy', 'srcfile' <environment: 0x2428770> 
+  .. ..- attr(*, "srcfile")=Classes 'srcfilecopy', 'srcfile' <environment: 0x2e55ee0> 
  - attr(*, "note")= chr "just a note"
  - attr(*, "yada")=function ()  
   ..- attr(*, "srcref")=Class 'srcref'  atomic [1:8] 2 24 2 48 24 48 2 2
-  .. .. ..- attr(*, "srcfile")=Classes 'srcfilecopy', 'srcfile' <environment: 0x2428770> 
+  .. .. ..- attr(*, "srcfile")=Classes 'srcfilecopy', 'srcfile' <environment: 0x2e55ee0> 
 > rm(print.function)
 > ## auto-printing and printing differed up to R 2.9.x
 > 
@@ -6702,7 +6703,7 @@ common odds ratio
 	Mantel-Haenszel chi-squared test with continuity correction
 
 data:  Nitrous
-Mantel-Haenszel X-squared = 0.7143, df = 1, p-value = 0.199
+Mantel-Haenszel X-squared = 0.71432, df = 1, p-value = 0.199
 alternative hypothesis: true common odds ratio is less than 1
 95 percent confidence interval:
  0.000000 1.260053
@@ -7153,9 +7154,9 @@ arima(x = x, order = c(1, 1, 1), seasonal = c(1, 0, 1), xreg = xreg)
 Coefficients:
           ar1     ma1    sar1     sma1    xreg
       -0.4791  0.3525  0.9877  -0.8295  0.3574
-s.e.   0.4184  0.4444  0.0331   0.2221  0.7480
+s.e.   0.4162  0.4420  0.0329   0.2209  0.7440
 
-sigma^2 estimated as 0.001515:  log likelihood = 162.05,  aic = -312.09
+sigma^2 estimated as 0.001499:  log likelihood = 163.79,  aic = -315.58
 > (f2 <- arima(diff(x), xreg = diff(xreg), order = c(1,0,1), seasonal = c(1,0,1),
 +              include.mean = FALSE))
 
@@ -7673,4 +7674,33 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    TRUE 
 > ##
+> 
+> 
+> ## PR#16437
+> dd <- data.frame(F = factor(rep(c("A","B","C"), each = 3)), num = 1:9)
+> cs <- list(F = contr.sum(3, contrasts = FALSE))
+> a1 <- aov(num ~ F, data = dd, contrasts = cs)
+> model.tables(a1, "means")
+Tables of means
+Grand mean
+  
+5 
+
+ F 
+F
+A B C 
+2 5 8 
+> t1 <- TukeyHSD(a1) ## don't print to avoid precision issues.
+> a2 <- aov(num ~ 0+F, data = dd, contrasts = cs)
+> model.tables(a2, "means")
+Tables of means
+
+ F 
+F
+A B C 
+2 5 8 
+> t2 <- TukeyHSD(a2)
+> attr(t1, "orig.call") <- attr(t2, "orig.call")
+> stopifnot(all.equal(t1, t2))
+> ## functions both failed on a2 in R <= 3.2.2.
 > 

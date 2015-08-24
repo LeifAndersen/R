@@ -14,7 +14,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 
@@ -64,6 +64,7 @@ static R_size_t objectsize(SEXP s)
 	/* no charge for the environment */
 	break;
     case ENVSXP:
+	R_CheckStack(); /* in case attributes might lead to a cycle */
     case PROMSXP:
     case SPECIALSXP:
     case BUILTINSXP:
@@ -87,13 +88,14 @@ static R_size_t objectsize(SEXP s)
 	break;
     case STRSXP:
 	vcnt = PTR2VEC(xlength(s));
-	dup = Rf_csduplicated(s);
+	PROTECT(dup = Rf_csduplicated(s));
 	for (R_xlen_t i = 0; i < xlength(s); i++) {
 	    tmp = STRING_ELT(s, i);
 	    if(tmp != NA_STRING && !LOGICAL(dup)[i])
 		cnt += objectsize(tmp);
 	}
 	isVec = TRUE;
+	UNPROTECT(1);
 	break;
     case ANYSXP:
 	/* we don't know about these */

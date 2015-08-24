@@ -1,12 +1,13 @@
 useDynLib(methods, .registration = TRUE, .fixes = "C_")
 
-importFrom(utils, find)
-
+importFrom("utils", find, prompt, tail)
+importFrom("stats", formula, setNames, toeplitz, ts)
 
 exportPattern("^\\.__C__")
 exportPattern("^\\.__M__")
 exportPattern("^\\.__T__")
 
+export(.S4methods)
 export(.TraceWithMethods)
 export(.untracedFunction)
 export(.doTracePrint)
@@ -70,6 +71,7 @@ export(evalSource)
 export(existsFunction)
 export(existsMethod)
 export(extends)
+export(externalRefMethod)
 export(finalDefaultMethod)
 export(findClass)
 export(findFunction)

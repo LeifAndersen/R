@@ -1,5 +1,5 @@
 #  File src/library/tools/R/utils.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
 #  Copyright (C) 1995-2015 The R Core Team
 #
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 ### * File utilities.
 
@@ -152,6 +152,21 @@ function(dir, type, all.files = FALSE, full.names = TRUE,
     files
 }
 
+### ** reQuote
+
+## <FIXME>
+## Move into base eventually ...
+reQuote <-
+function(x)
+{
+    escape <- function(s) paste0("\\", s)
+    re <- "[.*?+^$\\[]"
+    m <- gregexpr(re, x)
+    regmatches(x, m) <- lapply(regmatches(x, m), escape)
+    x
+}
+## </FIXME>
+
 ### ** showNonASCII
 
 showNonASCII <-
@@ -166,7 +181,7 @@ function(x)
     if(any(ind))
         message(paste0(which(ind), ": ",
                        iconv(x[ind], "latin1", "ASCII", sub = "byte"),
-                       collapse = "\n"))
+                       collapse = "\n"), domain = NA)
     invisible(x[ind])
 }
 
@@ -243,19 +258,19 @@ function(file, pdf = FALSE, clean = FALSE, quiet = TRUE,
     bstinputs <- paste(c(texinputs0, Rbstinputs, ""),
                        collapse = envSep)
 
-    otexinputs <- Sys.getenv("TEXINPUTS", unset = NA)
+    otexinputs <- Sys.getenv("TEXINPUTS", unset = NA_character_)
     if(is.na(otexinputs)) {
         on.exit(Sys.unsetenv("TEXINPUTS"))
         otexinputs <- "."
     } else on.exit(Sys.setenv(TEXINPUTS = otexinputs))
     Sys.setenv(TEXINPUTS = paste(otexinputs, texinputs, sep = envSep))
-    obibinputs <- Sys.getenv("BIBINPUTS", unset = NA)
+    obibinputs <- Sys.getenv("BIBINPUTS", unset = NA_character_)
     if(is.na(obibinputs)) {
         on.exit(Sys.unsetenv("BIBINPUTS"), add = TRUE)
         obibinputs <- "."
     } else on.exit(Sys.setenv(BIBINPUTS = obibinputs, add = TRUE))
     Sys.setenv(BIBINPUTS = paste(obibinputs, bibinputs, sep = envSep))
-    obstinputs <- Sys.getenv("BSTINPUTS", unset = NA)
+    obstinputs <- Sys.getenv("BSTINPUTS", unset = NA_character_)
     if(is.na(obstinputs)) {
         on.exit(Sys.unsetenv("BSTINPUTS"), add = TRUE)
         obstinputs <- "."
@@ -446,7 +461,7 @@ function(file, pdf = FALSE, clean = FALSE, quiet = TRUE,
 ### ** .BioC_version_associated_with_R_version
 
 .BioC_version_associated_with_R_version <-
-    function() numeric_version(Sys.getenv("R_BIOC_VERSION", "3.0"))
+    function() numeric_version(Sys.getenv("R_BIOC_VERSION", "3.1"))
 ## Things are more complicated from R-2.15.x with still two BioC
 ## releases a year, so we do need to set this manually.
 ## Wierdly, 3.0 is the second version (after 2.14) for the 3.1.x series.
@@ -588,6 +603,27 @@ function(expr, type = NULL)
          message = readLines(msgcon, encoding = "UTF-8", warn = FALSE))
 }
 
+### ** .expand_anchored_Rd_xrefs
+
+.expand_anchored_Rd_xrefs <-
+function(db)
+{
+    ## db should have columns Target and Anchor.
+    db <- db[, c("Target", "Anchor"), drop = FALSE]
+    ## See .check_Rd_xrefs().
+    anchor <- db[, 2L]
+    have_equals <- grepl("^=", anchor)
+    if(any(have_equals))
+        db[have_equals, ] <-
+            cbind(sub("^=", "", anchor[have_equals]), "")
+    anchor <- db[, 2L]
+    have_colon <- grepl(":", anchor, fixed = TRUE)
+    y <- cbind(T_Package = anchor, T_File = db[, 1L])
+    y[have_colon, ] <-
+        cbind(sub("([^:]*):(.*)", "\\1", anchor[have_colon]),
+              sub("([^:]*):(.*)", "\\2", anchor[have_colon]))
+    y
+}
 
 ### ** .file_append_ensuring_LFs
 
@@ -808,6 +844,20 @@ function(dir, installed = FALSE)
     stop("invalid package layout")
 }
 
+### ** .get_repositories
+
+.get_repositories <-
+function()
+{
+    rfile <- Sys.getenv("R_REPOSITORIES", unset = NA_character_)
+    if(is.na(rfile) || !file_test("-f", rfile)) {
+        rfile <- file.path(Sys.getenv("HOME"), ".R", "repositories")
+        if(!file_test("-f", rfile))
+            rfile <- file.path(R.home("etc"), "repositories")
+    }
+    .read_repositories(rfile)
+}
+
 ### ** .get_requires_from_package_db
 
 .get_requires_from_package_db <-
@@ -884,17 +934,18 @@ function(dir, installed = TRUE, primitive = FALSE)
             env_list <- unique(env_list)
         }
     }
+    ## some BioC packages warn here
+    suppressWarnings(
     unique(c(.get_internal_S3_generics(primitive),
              unlist(lapply(env_list,
                            function(env) {
-                               nms <- objects(envir = env,
-                                              all.names = TRUE)
+                               nms <- sort(names(env))
                                if(".no_S3_generics" %in% nms)
                                    character()
                                else Filter(function(f)
                                            .is_S3_generic(f, envir = env),
                                            nms)
-                           }))))
+                           })))))
 }
 
 ### ** .get_S3_group_generics
@@ -967,16 +1018,10 @@ function()
            (repos["CRAN"] != "@CRAN@"))
             repos <- repos[nms]
         else {
-            p <- file.path(Sys.getenv("HOME"), ".R", "repositories")
-            repos <- if(file_test("-f", p)) {
-                a <- .read_repositories(p)
-                a[nms, "URL"]
-            } else {
-                a <- .read_repositories(file.path(R.home("etc"),
-                                                  "repositories"))
-                c("http://CRAN.R-project.org", a[nms[-1L], "URL"])
-            }
+            repos <- .get_repositories()[nms, "URL"]
             names(repos) <- nms
+            if(repos["CRAN"] == "@CRAN@")
+                repos["CRAN"] <- "http://CRAN.R-project.org"
         }
     }
     repos
@@ -1122,6 +1167,28 @@ function(pattern, replacement, x, trafo, count, ...)
     x
 }
 
+### imports_for_undefined_globals
+
+imports_for_undefined_globals <-
+function(txt, lst, selective = TRUE)
+{
+    if(!missing(txt))
+        lst <- scan(what = character(), text = txt, quiet = TRUE)
+    lst <- sort(unique(lst))
+    nms <- lapply(lst, utils::find)
+    ind <- sapply(nms, length) > 0L
+    imp <- split(lst[ind], substring(unlist(nms[ind]), 9L))
+    if(selective) {
+        sprintf("importFrom(%s)",
+                vapply(Map(c, names(imp), imp),
+                       function(e)
+                           paste0("\"", e, "\"", collapse = ", "),
+                       ""))
+    } else {
+        sprintf("import(\"%s\")", names(imp))
+    }
+}
+
 ### ** .is_ASCII
 
 .is_ASCII <-
@@ -1215,6 +1282,25 @@ function(fname, envir, mustMatch = TRUE)
     if(mustMatch) res == fname else nzchar(res)
 }
 
+### ** .load_namespace_rather_quietly
+
+.load_namespace_rather_quietly <-
+function(package)
+{
+    ## Suppress messages and warnings from loading namespace
+    ## dependencies.
+    .whandler <- function(e) {
+        calls <- sys.calls()
+        if(sum(.call_names(calls) == "loadNamespace") == 1L)
+            signalCondition(e)
+        else
+            invokeRestart("muffleWarning")
+    }
+    expr <- substitute(loadNamespace(package), list(package = package))
+    invisible(withCallingHandlers(suppressMessages(eval(expr)),
+                                  warning = .whandler))
+}
+
 ### ** .load_package_quietly
 
 .load_package_quietly <-
@@ -1296,11 +1382,10 @@ function(parent = parent.frame(), fixup = FALSE)
 {
     ## Create an environment with pseudo-definitions for the S3 primitive
     ## generics
-    env <- new.env(hash = TRUE, parent = parent)
-    for(f in names(base::.GenericArgsEnv))
-        assign(f, get(f, envir=base::.GenericArgsEnv), envir = env)
+    env <- list2env(as.list(base::.GenericArgsEnv, all.names=TRUE),
+                    hash=TRUE, parent=parent)
     if(fixup) {
-        ## now fixup the operators
+        ## now fixup the operators from (e1,e2) to (x,y)
         for(f in c('+', '-', '*', '/', '^', '%%', '%/%', '&', '|',
                    '==', '!=', '<', '<=', '>=', '>')) {
             fx <- get(f, envir = env)
@@ -1313,28 +1398,26 @@ function(parent = parent.frame(), fixup = FALSE)
 
 ### ** .make_S3_primitive_nongeneric_env
 
+## why not just use  base::.ArgsEnv -- is the parent really important if(is_base)?
 .make_S3_primitive_nongeneric_env <-
 function(parent = parent.frame())
 {
     ## Create an environment with pseudo-definitions
     ## for the S3 primitive non-generics
-    env <- new.env(hash = TRUE, parent = parent)
-    for(f in names(base::.ArgsEnv))
-        assign(f, get(f, envir=base::.ArgsEnv), envir = env)
-    env
+    list2env(as.list(base::.ArgsEnv, all.names=TRUE),
+             hash=TRUE, parent=parent)
 }
 
-### ** .make_S3_methods_stop_list
+### ** nonS3methods [was .make_S3_methods_stop_list ]
 
-.make_S3_methods_stop_list <-
-function(package)
+nonS3methods <- function(package)
 {
     ## Return a character vector with the names of the functions in
     ## @code{package} which 'look' like S3 methods, but are not.
     ## Using package = NULL returns all known examples
 
     stopList <-
-        list(base = c("all.equal", "all.names", "all.vars",
+        list(base = c("all.equal", "all.names", "all.vars", "expand.grid",
              "format.char", "format.info", "format.pval",
              "max.col",
              ## the next two only exist in *-defunct.Rd.
@@ -1356,6 +1439,7 @@ function(package)
              HyperbolicDist = "log.hist",
              MASS = c("frequency.polygon", "gamma.dispersion", "gamma.shape",
                       "hist.FD", "hist.scott"),
+             LinearizedSVR = "sigma.est",
              ## FIXME: since these are already listed with 'base',
              ##        they should not need to be repeated here:
              Matrix = c("qr.Q", "qr.R", "qr.coef", "qr.fitted",
@@ -1363,10 +1447,13 @@ function(package)
              RCurl = "merge.list",
              RNetCDF = c("close.nc", "dim.def.nc", "dim.inq.nc",
                          "dim.rename.nc", "open.nc", "print.nc"),
+             Rmpfr = c("mpfr.is.0", "mpfr.is.integer"),
              SMPracticals = "exp.gibbs",
+             TANOVA = "sigma.hat",
+             TeachingDemos = "sigma.test",
              XML = "text.SAX",
              ape = "sort.index",
-             arm = "sigma.hat", # lme4 has sigma()
+             arm = "sigma.hat",
              assist = "chol.new",
              boot = "exp.tilt",
              car = "scatterplot.matrix",
@@ -1376,6 +1463,8 @@ function(package)
              crossdes = "all.combn",
              ctv = "update.views",
              deSolve = "plot.1D",
+             effects = "all.effects", # already deprecated
+             elliptic = "sigma.laurent",
              equivalence = "sign.boot",
              fields = c("qr.q2ty", "qr.yq2"),
              gbm = c("pretty.gbm.tree", "quantile.rug"),
@@ -1402,9 +1491,10 @@ function(package)
              sm = "print.graph",
              splusTimeDate = "sort.list",
              splusTimeSeries = "sort.list",
-             stats = c("anova.lmlist", "fitted.values", "lag.plot",
-                       "influence.measures", "t.test",
+	     stats = c("anova.lmlist", "expand.model.frame", "fitted.values",
+		       "influence.measures", "lag.plot", "t.test",
                        "plot.spec.phase", "plot.spec.coherency"),
+             stremo = "sigma.hat",
              supclust = c("sign.change", "sign.flip"),
              tensorA = "chol.tensor",
              utils = c("close.socket", "flush.console", "update.packages")
@@ -1435,7 +1525,19 @@ function(packages = NULL, FUN, ...)
     out
 }
 
-### .parse_code_file
+### ** .pandoc_md_for_CRAN
+
+.pandoc_md_for_CRAN <-
+function(ifile, ofile)
+{
+    .system_with_capture("pandoc",
+                         paste(shQuote(ifile), "-s",
+                               "--email-obfuscation=references",
+                               "--css=../../CRAN_web.css",
+                               "-o", shQuote(ofile)))
+}
+
+### ** .parse_code_file
 
 .parse_code_file <-
 function(file, encoding = NA, keep.source = getOption("keep.source"))
@@ -1579,12 +1681,13 @@ function(file)
     db
 }
 
+### default changed to https: for R 3.3.0
 .expand_BioC_repository_URLs <-
 function(x)
 {
     x <- sub("%bm",
              as.character(getOption("BioC_mirror",
-                                    "http://www.bioconductor.org")),
+                                    "https://bioconductor.org")),
              x, fixed = TRUE)
     sub("%v",
         as.character(.BioC_version_associated_with_R_version()),
@@ -1859,6 +1962,61 @@ psnice <- function(pid = Sys.getpid(), value = NA_integer_)
     res <- .Call(ps_priority, pid, value)
     if(is.na(value)) res else invisible(res)
 }
+
+### ** toTitleCase
+
+## original version based on http://daringfireball.net/2008/05/title_case
+## but much altered before release.
+toTitleCase <- function(text)
+{
+    ## leave these alone: the internal caps rule would do that
+    ## in some cases.  We could insist on this exact capitalization.
+    alone <- c("2D", "3D", "AIC", "BayesX", "GoF", "HTML", "LaTeX",
+               "MonetDB", "OpenBUGS", "TeX", "U.S.", "U.S.A.", "WinBUGS",
+               "aka", "et", "al.", "ggplot2", "i.e.", "jar", "jars",
+               "ncdf", "netCDF", "rgl", "rpart", "xls", "xlsx")
+    ## These should be lower case except at the beginning (and after :)
+    lpat <- "^(a|an|and|are|as|at|be|but|by|en|for|if|in|is|nor|not|of|on|or|per|so|the|to|v[.]?|via|vs[.]?|from|into|than|that|with)$"
+    ## These we don't care about
+    either <- c("all", "above", "after", "along", "also", "among",
+                "any", "both", "can", "few", "it", "less", "log",
+                "many", "may", "more", "over", "some", "their",
+                "then", "this", "under", "until", "using", "von",
+                "when", "where", "which", "will", "without",
+                "yet", "you", "your")
+    titleCase1 <- function(x) {
+        ## A quote might be prepended.
+        do1 <- function(x) {
+            x1 <- substring(x, 1L, 1L)
+            if(nchar(x) >= 3L && x1 %in% c("'", '"'))
+                paste0(x1, toupper(substring(x, 2L, 2L)),
+                       tolower(substring(x, 3L)))
+            else paste0(toupper(x1), tolower(substring(x, 2L)))
+        }
+        xx <- .Call(splitString, x, ' -/"()')
+        ## for 'alone' we could insist on that exact capitalization
+        alone <- xx %in% c(alone, either)
+        alone <- alone | grepl("^'.*'$", xx)
+        havecaps <- grepl("^[[:alpha:]].*[[:upper:]]+", xx)
+        l <- grepl(lpat, xx, ignore.case = TRUE)
+        l[1L] <- FALSE
+        ## do not remove capitalization immediately after ": " or "- "
+        ind <- grep("[-:]$", xx); ind <- ind[ind + 2L <= length(l)]
+        ind <- ind[(xx[ind + 1L] == " ") & grepl("^['[:alnum:]]", xx[ind + 2L])]
+        l[ind + 2L] <- FALSE
+        ## Also after " (e.g. "A Book Title")
+        ind <- which(xx == '"'); ind <- ind[ind + 1L <= length(l)]
+        l[ind + 1L] <- FALSE
+        xx[l] <- tolower(xx[l])
+        keep <- havecaps | l | (nchar(xx) == 1L) | alone
+        xx[!keep] <- sapply(xx[!keep], do1)
+        paste(xx, collapse = "")
+    }
+    if(typeof(text) != "character")
+        stop("'text' must be a character vector")
+    sapply(text, titleCase1, USE.NAMES = FALSE)
+}
+
 ### Local variables: ***
 ### mode: outline-minor ***
 ### outline-regexp: "### [*]+" ***

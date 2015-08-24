@@ -16,7 +16,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 /*  This module contains support for S-style generic */
@@ -196,18 +196,18 @@ SEXP R_LookupMethod(SEXP method, SEXP rho, SEXP callrho, SEXP defrho)
     static SEXP s_S3MethodsTable = NULL;
 
     if (TYPEOF(callrho) != ENVSXP) {
-        if (TYPEOF(callrho) == NILSXP)
+	if (TYPEOF(callrho) == NILSXP)
 	    error(_("use of NULL environment is defunct"));
-        else
+	else
 	    error(_("bad generic call environment"));
     }
     if (defrho == R_BaseEnv)
 	defrho = R_BaseNamespace;
     else if (TYPEOF(defrho) != ENVSXP) {
-        if (TYPEOF(defrho) == NILSXP)
-            error(_("use of NULL environment is defunct"));
-        else
-            error(_("bad generic definition environment"));
+	if (TYPEOF(defrho) == NILSXP)
+	    error(_("use of NULL environment is defunct"));
+	else
+	    error(_("bad generic definition environment"));
     }
 
     /* This evaluates promises */
@@ -221,10 +221,18 @@ SEXP R_LookupMethod(SEXP method, SEXP rho, SEXP callrho, SEXP defrho)
 	SEXP table = findVarInFrame3(defrho,
 				     s_S3MethodsTable,
 				     TRUE);
-	if (TYPEOF(table) == PROMSXP) table = eval(table, R_BaseEnv);
+	if (TYPEOF(table) == PROMSXP) {
+	    PROTECT(table);
+	    table = eval(table, R_BaseEnv);
+	    UNPROTECT(1);
+	}
 	if (TYPEOF(table) == ENVSXP) {
 	    val = findVarInFrame3(table, method, TRUE);
-	    if (TYPEOF(val) == PROMSXP) val = eval(val, rho);
+	    if (TYPEOF(val) == PROMSXP) {
+		PROTECT(val);
+		val = eval(val, rho);
+		UNPROTECT(1);
+	    }
 	    return val;
 	}
 	return R_UnboundValue;
@@ -275,7 +283,7 @@ SEXP addS3Var(SEXP vars, SEXP name, SEXP value) {
 
 attribute_hidden
 SEXP createS3Vars(SEXP dotGeneric, SEXP dotGroup, SEXP dotClass, SEXP dotMethod,
-                  SEXP dotGenericCallEnv, SEXP dotGenericDefEnv) {
+		  SEXP dotGenericCallEnv, SEXP dotGenericDefEnv) {
 
     SEXP v = R_NilValue;
     v = addS3Var(v, R_dot_GenericDefEnv, dotGenericDefEnv);
@@ -294,12 +302,12 @@ SEXP dispatchMethod(SEXP op, SEXP sxp, SEXP dotClass, RCNTXT *cptr, SEXP method,
 		    const char *generic, SEXP rho, SEXP callrho, SEXP defrho) {
 
     SEXP newvars = PROTECT(createS3Vars(
-        PROTECT(mkString(generic)),
-        R_BlankScalarString,
-        dotClass,
-        PROTECT(ScalarString(PRINTNAME(method))),
-        callrho,
-        defrho
+	PROTECT(mkString(generic)),
+	R_BlankScalarString,
+	dotClass,
+	PROTECT(ScalarString(PRINTNAME(method))),
+	callrho,
+	defrho
     ));
 
     /* Create a new environment without any */
@@ -313,20 +321,20 @@ SEXP dispatchMethod(SEXP op, SEXP sxp, SEXP dotClass, RCNTXT *cptr, SEXP method,
 	for (s = FRAME(cptr->cloenv); s != R_NilValue; s = CDR(s)) {
 	    matched = 0;
 	    for (t = formals; t != R_NilValue; t = CDR(t))
-	        if (TAG(t) == TAG(s)) {
+		if (TAG(t) == TAG(s)) {
 		    matched = 1;
 		    break;
 		}
 	    if (!matched) {
-	        UNPROTECT(1); /* newvars */
-	        newvars = PROTECT(CONS(CAR(s), newvars));
-	        SET_TAG(newvars, TAG(s));
-            }
+		UNPROTECT(1); /* newvars */
+		newvars = PROTECT(CONS(CAR(s), newvars));
+		SET_TAG(newvars, TAG(s));
+	    }
 	}
     }
 
     if( (RDEBUG(op) && R_current_debug_state()) || RSTEP(op) ) {
-        SET_RSTEP(sxp, 1);
+	SET_RSTEP(sxp, 1);
     }
 
     SEXP newcall =  PROTECT(duplicate(cptr->call));
@@ -360,36 +368,37 @@ int usemethod(const char *generic, SEXP obj, SEXP call, SEXP args,
     nclass = length(klass);
     for (i = 0; i < nclass; i++) {
 	const void *vmax = vmaxget();
-        const char *ss = translateChar(STRING_ELT(klass, i));
+	const char *ss = translateChar(STRING_ELT(klass, i));
 	method = installS3Signature(generic, ss);
 	vmaxset(vmax);
 	sxp = R_LookupMethod(method, rho, callrho, defrho);
 	if (isFunction(sxp)) {
 	    if(method == R_SortListSymbol && CLOENV(sxp) == R_BaseNamespace)
 		continue; /* kludge because sort.list is not a method */
-            if (i > 0) {
+	    PROTECT(sxp);
+	    if (i > 0) {
 		SEXP dotClass = PROTECT(stringSuffix(klass, i));
 		setAttrib(dotClass, R_PreviousSymbol, klass);
 		*ans = dispatchMethod(op, sxp, dotClass, cptr, method, generic,
 				      rho, callrho, defrho);
 		UNPROTECT(1); /* dotClass */
 	    } else {
-	        *ans = dispatchMethod(op, sxp, klass, cptr, method, generic,
+		*ans = dispatchMethod(op, sxp, klass, cptr, method, generic,
 				      rho, callrho, defrho);
-            }
-	    UNPROTECT(1); /* klass */
+	    }
+	    UNPROTECT(2); /* klass, sxp */
 	    return 1;
 	}
     }
     method = installS3Signature(generic, "default");
-    sxp = R_LookupMethod(method, rho, callrho, defrho);
+    PROTECT(sxp = R_LookupMethod(method, rho, callrho, defrho));
     if (isFunction(sxp)) {
-        *ans = dispatchMethod(op, sxp, R_NilValue, cptr, method, generic,
+	*ans = dispatchMethod(op, sxp, R_NilValue, cptr, method, generic,
 			      rho, callrho, defrho);
-	UNPROTECT(1); /* klass */
+	UNPROTECT(2); /* klass, sxp */
 	return 1;
     }
-    UNPROTECT(1); /* klass */
+    UNPROTECT(2); /* klass, sxp */
     cptr->callflag = CTXT_RETURN;
     return 0;
 }
@@ -409,7 +418,7 @@ SEXP attribute_hidden NORET do_usemethod(SEXP call, SEXP op, SEXP args, SEXP env
     static SEXP do_usemethod_formals = NULL;
 
     if (do_usemethod_formals == NULL)
-        do_usemethod_formals = allocFormalsList2(install("generic"),
+	do_usemethod_formals = allocFormalsList2(install("generic"),
 						 install("object"));
 
     PROTECT(argList = matchArgs(do_usemethod_formals, args, call));
@@ -417,7 +426,7 @@ SEXP attribute_hidden NORET do_usemethod(SEXP call, SEXP op, SEXP args, SEXP env
 	errorcall(call, _("there must be a 'generic' argument"));
     else
 	PROTECT(generic = eval(CAR(argList), env));
-    if(!isString(generic) || length(generic) != 1)
+    if(!isString(generic) || LENGTH(generic) != 1)
 	errorcall(call, _("'generic' argument must be a character string"));
 
 
@@ -492,9 +501,9 @@ static SEXP fixcall(SEXP call, SEXP args)
 		found = 0;
 		for(s = call; CDR(s) != R_NilValue; s = CDR(s))
 		    if(TAG(CDR(s)) == TAG(t)) {
-                        found = 1;
-                        break;
-                    }
+			found = 1;
+			break;
+		    }
 		if( !found ) {
 			SETCDR(s, allocList(1));
 			SET_TAG(CDR(s), TAG(t));
@@ -511,20 +520,20 @@ static SEXP fixcall(SEXP call, SEXP args)
 */
 static
 Rboolean equalS3Signature(const char *signature, const char *left,
-                         const char *right) {
+			 const char *right) {
 
     const char *s = signature;
     const char *a;
 
     for(a = left; *a; s++, a++) {
-        if (*s != *a)
-            return FALSE;
+	if (*s != *a)
+	    return FALSE;
     }
     if (*s++ != '.')
-        return FALSE;
+	return FALSE;
     for(a = right; *a; s++, a++) {
-        if (*s != *a)
-            return FALSE;
+	if (*s != *a)
+	    return FALSE;
     }
     return (*s == 0) ? TRUE : FALSE;
 }
@@ -566,7 +575,7 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
        error(_("'NextMethod' called from an anonymous function"));
 
     readS3VarsFromFrame(sysp, &generic, &group, &klass, &method,
-                        &callenv, &defenv);
+			&callenv, &defenv);
 
     /* Find dispatching environments. Promises shouldn't occur, but
        check to be on the safe side.  If the variables are not in the
@@ -637,7 +646,7 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
 	error(_("generic function not specified"));
     PROTECT(generic);
 
-    if (!isString(generic) || length(generic) != 1)
+    if (!isString(generic) || LENGTH(generic) != 1)
 	error(_("invalid generic argument to 'NextMethod'"));
 
     if (CHAR(STRING_ELT(generic, 0))[0] == '\0')
@@ -649,8 +658,8 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
 	group = R_BlankScalarString;
 	basename = generic;
     } else {
-	if (!isString(group) || length(group) != 1)
-            error(_("invalid 'group' argument found in 'NextMethod'"));
+	if (!isString(group) || LENGTH(group) != 1)
+	    error(_("invalid 'group' argument found in 'NextMethod'"));
 	if (CHAR(STRING_ELT(group, 0))[0] == '\0') basename = generic;
 	else basename = group;
     }
@@ -668,13 +677,13 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
     if (method != R_UnboundValue) {
 	if (!isString(method))
 	    error(_("wrong value for .Method"));
-	for(i = 0; i < length(method); i++) {
+	for(i = 0; i < LENGTH(method); i++) {
 	    b = translateChar(STRING_ELT(method, i));
 	    if (strlen(b)) break;
 	}
 	/* for binary operators check that the second argument's method
 	   is the same or absent */
-	for(j = i; j < length(method); j++) {
+	for(j = i; j < LENGTH(method); j++) {
 	    const char *bb = translateChar(STRING_ELT(method, j));
 	    if (strlen(bb) && strcmp(b,bb))
 		warning(_("Incompatible methods ignored"));
@@ -686,7 +695,7 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
 
     sb = translateChar(STRING_ELT(basename, 0));
     Rboolean foundSignature = FALSE;
-    for (j = 0; j < length(klass); j++) {
+    for (j = 0; j < LENGTH(klass); j++) {
 	sk = translateChar(STRING_ELT(klass, j));
 	if (equalS3Signature(b, sb, sk)) { /* b == sb.sk */
 	    foundSignature = TRUE;
@@ -703,9 +712,9 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
 	   how many classes to drop. */
 
     sg = translateChar(STRING_ELT(generic, 0));
-    for (i = j ; i < length(klass); i++) {
+    for (i = j ; i < LENGTH(klass); i++) {
 	sk = translateChar(STRING_ELT(klass, i));
-        nextfunSignature = installS3Signature(sg, sk);
+	nextfunSignature = installS3Signature(sg, sk);
 	nextfun = R_LookupMethod(nextfunSignature, env, callenv, defenv);
 	if (isFunction(nextfun)) break;
 	if (group != R_UnboundValue) {
@@ -728,8 +737,11 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
 	if (!isFunction(nextfun)) {
 	    t = install(sg);
 	    nextfun = findVar(t, env);
-	    if (TYPEOF(nextfun) == PROMSXP)
+	    if (TYPEOF(nextfun) == PROMSXP) {
+		PROTECT(nextfun);
 		nextfun = eval(nextfun, env);
+		UNPROTECT(1);
+	    }
 	    if (!isFunction(nextfun))
 		error(_("no method to invoke"));
 	    if (TYPEOF(nextfun) == CLOSXP) {
@@ -740,6 +752,7 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
 	    }
 	}
     }
+    PROTECT(nextfun);
     PROTECT(s = stringSuffix(klass, i));
     setAttrib(s, R_PreviousSymbol, klass);
     /* It is possible that if a method was called directly that
@@ -747,7 +760,7 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
     if (method != R_UnboundValue) {
 	/* for Ops we need `method' to be a vector */
 	PROTECT(method = duplicate(method));
-	for(j = 0; j < length(method); j++) {
+	for(j = 0; j < LENGTH(method); j++) {
 	    if (strlen(CHAR(STRING_ELT(method,j))))
 		SET_STRING_ELT(method, j,  PRINTNAME(nextfunSignature));
 	}
@@ -755,12 +768,12 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
 	PROTECT(method = PRINTNAME(nextfunSignature));
 
     SEXP newvars = PROTECT(createS3Vars(
-        generic,
-        group,
-        s,
-        method,
-        callenv,
-        defenv
+	generic,
+	group,
+	s,
+	method,
+	callenv,
+	defenv
     ));
 
     SETCAR(newcall, nextfunSignature);
@@ -772,7 +785,7 @@ SEXP attribute_hidden do_nextmethod(SEXP call, SEXP op, SEXP args, SEXP env)
 
     ans = applyMethod(newcall, nextfun, matchedarg, env, newvars);
     vmaxset(vmax);
-    UNPROTECT(7);
+    UNPROTECT(8);
     return(ans);
 }
 
@@ -825,9 +838,9 @@ static SEXP inherits3(SEXP x, SEXP what, SEXP which)
 
     if(!isString(what))
 	error(_("'what' must be a character vector"));
-    int j, nwhat = length(what);
+    int j, nwhat = LENGTH(what);
 
-    if( !isLogical(which) || (length(which) != 1) )
+    if( !isLogical(which) || (LENGTH(which) != 1) )
 	error(_("'which' must be a length 1 logical vector"));
     int isvec = asLogical(which);
 
@@ -853,7 +866,7 @@ static SEXP inherits3(SEXP x, SEXP what, SEXP which)
     }
     vmaxset(vmax);
     if(!isvec) {
-    	UNPROTECT(1);
+	UNPROTECT(1);
 	return mkFalse();
     }
     UNPROTECT(2);
@@ -891,12 +904,15 @@ SEXP attribute_hidden do_inherits(SEXP call, SEXP op, SEXP args, SEXP env)
 int R_check_class_and_super(SEXP x, const char **valid, SEXP rho)
 {
     int ans;
-    SEXP cl = getAttrib(x, R_ClassSymbol);
-    const char *class = CHAR(asChar(cl));
+    SEXP cl = PROTECT(asChar(getAttrib(x, R_ClassSymbol)));
+    const char *class = CHAR(cl);
     for (ans = 0; ; ans++) {
 	if (!strlen(valid[ans])) // empty string
 	    break;
-	if (!strcmp(class, valid[ans])) return ans;
+	if (!strcmp(class, valid[ans])) {
+	    UNPROTECT(1); /* cl */
+	    return ans;
+	}
     }
     /* if not found directly, now search the non-virtual super classes :*/
     if(IS_S4_OBJECT(x)) {
@@ -909,26 +925,27 @@ int R_check_class_and_super(SEXP x, const char **valid, SEXP rho)
 	    s_contains      = install("contains");
 	    s_selectSuperCl = install(".selectSuperClasses");
 	}
-
-	PROTECT(classExts = R_do_slot(R_getClassDef(class), s_contains));
+	SEXP classDef = PROTECT(R_getClassDef(class));
+	PROTECT(classExts = R_do_slot(classDef, s_contains));
 	PROTECT(_call = lang3(s_selectSuperCl, classExts,
 			      /* dropVirtual = */ ScalarLogical(1)));
 	superCl = eval(_call, rho);
-	UNPROTECT(2);
+	UNPROTECT(3); /* _call, classExts, classDef */
 	PROTECT(superCl);
-	for(i=0; i < length(superCl); i++) {
+	for(i=0; i < LENGTH(superCl); i++) {
 	    const char *s_class = CHAR(STRING_ELT(superCl, i));
 	    for (ans = 0; ; ans++) {
 		if (!strlen(valid[ans]))
 		    break;
 		if (!strcmp(s_class, valid[ans])) {
-		    UNPROTECT(1);
+		    UNPROTECT(2); /* superCl, cl */
 		    return ans;
 		}
 	    }
 	}
-	UNPROTECT(1);
+	UNPROTECT(1); /* superCl */
     }
+    UNPROTECT(1); /* cl */
     return -1;
 }
 
@@ -961,7 +978,10 @@ int R_check_class_etc(SEXP x, const char **valid)
 	if(!isEnvironment(rho))
 	    error(_("could not find correct environment; please report!"));
     }
-    return R_check_class_and_super(x, valid, rho);
+    PROTECT(rho);
+    int res = R_check_class_and_super(x, valid, rho);
+    UNPROTECT(1);
+    return res;
 }
 
 /* standardGeneric:  uses a pointer to R_standardGeneric, to be
@@ -1329,12 +1349,15 @@ static SEXP get_this_generic(SEXP args)
     for(i=0;  i<n; i++) {
 	SEXP rval = R_sysfunction(i, cptr);
 	if(isObject(rval)) {
+	    PROTECT(rval);
 	    SEXP generic = getAttrib(rval, gen_name);
 	    if(TYPEOF(generic) == STRSXP &&
 	       !strcmp(translateChar(asChar(generic)), fname)) {
 	      value = rval;
+	      UNPROTECT(1); /* rval */
 	      break;
 	    }
+	    UNPROTECT(1); /* rval */
 	}
     }
     UNPROTECT(1);
@@ -1489,7 +1512,10 @@ SEXP R_getClassDef(const char *what)
 {
     if(!what)
 	error(_("R_getClassDef(.) called with NULL string pointer"));
-    return( R_getClassDef_R(mkString(what)) );
+    SEXP s = PROTECT(mkString(what));
+    SEXP ans = R_getClassDef_R(s);
+    UNPROTECT(1); /* s */
+    return ans;
 }
 
 Rboolean R_isVirtualClass(SEXP class_def, SEXP env)
@@ -1537,14 +1563,14 @@ SEXP R_do_new_object(SEXP class_def)
 	error(_("trying to generate an object from a virtual class (\"%s\")"),
 	      translateChar(asChar(e)));
     }
-    e = R_do_slot(class_def, s_className);
+    PROTECT(e = R_do_slot(class_def, s_className));
     PROTECT(value = duplicate(R_do_slot(class_def, s_prototype)));
     if(TYPEOF(value) == S4SXP || getAttrib(e, R_PackageSymbol) != R_NilValue)
     { /* Anything but an object from a base "class" (numeric, matrix,..) */
 	setAttrib(value, R_ClassSymbol, e);
 	SET_S4_OBJECT(value);
     }
-    UNPROTECT(1); /* value */
+    UNPROTECT(2); /* value, e */
     vmaxset(vmax);
     return value;
 }
@@ -1619,8 +1645,8 @@ SEXP asS4(SEXP s, Rboolean flag, int complete)
 	      error(_("object of class \"%s\" does not correspond to a valid S3 object"),
 		      CHAR(STRING_ELT(R_data_class(s, FALSE), 0)));
 	    else {
-	        UNPROTECT(1);
-	        return s; /*  unchanged */
+		UNPROTECT(1);
+		return s; /*  unchanged */
 	    }
 	}
 	UNSET_S4_OBJECT(s);

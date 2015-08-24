@@ -1,5 +1,5 @@
 #  File src/library/utils/R/aspell.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
 #  Copyright (C) 1995-2015 The R Core Team
 #
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 aspell <-
 function(files, filter, control = list(), encoding = "unknown",
@@ -153,6 +153,10 @@ function(files, filter, control = list(), encoding = "unknown",
             do.call(filter, c(list(file, encoding = enc), filter_args))
         }
 
+        ## Allow filters to pass additional control arguments, in case
+        ## these need to be inferred from the file contents.
+        control <- c(control, attr(lines, "control"))
+
         ## Need to escape all lines with carets to ensure Aspell handles
         ## them as data: the Aspell docs say
         ##   It is recommended that programmatic interfaces prefix every
@@ -238,10 +242,10 @@ function(files, filter, control = list(), encoding = "unknown",
     db
 }
 
-format.aspell <- 
+format.aspell <-
 function(x, sort = TRUE, verbose = FALSE, indent = 2L, ...)
 {
-    if(!(nr <- nrow(x))) return(character())
+    if(!nrow(x)) return(character())
 
     if(sort)
         x <- x[order(x$Original, x$File, x$Line, x$Column), ]
@@ -264,8 +268,7 @@ function(x, sort = TRUE, verbose = FALSE, indent = 2L, ...)
                    from,
                    split(x$Suggestions, x$Original)))
     } else {
-        sep <- sprintf("\n%s",
-                       paste(rep.int(" ", indent), collapse = ""))
+        sep <- sprintf("\n%s", strrep(" ", indent))
         paste(names(from),
               sapply(from, paste, collapse = sep),
               sep = sep)
@@ -275,7 +278,8 @@ function(x, sort = TRUE, verbose = FALSE, indent = 2L, ...)
 print.aspell <-
 function(x, ...)
 {
-    writeLines(paste(format(x, ...), collapse = "\n\n"))
+    if(nrow(x))
+        writeLines(paste(format(x, ...), collapse = "\n\n"))
     invisible(x)
 }
 
@@ -629,7 +633,7 @@ function(dir,
 
     fgroups <- split(files, vinfo$engines)
     egroups <- split(vinfo$encodings, vinfo$engines)
-    
+
     do.call(rbind,
             Map(function(fgroup, egroup, engine) {
                 engine <- tools::vignetteEngine(engine)
@@ -694,7 +698,7 @@ function(ifile, encoding = "unknown", ignore = character())
             cols <- cumsum(widths)
             widths[i] <- 8 - (cols[i] - 1) %% 8
         }
-        cumsum(c(1, widths))
+        cumsum(widths)
     },
                gregexpr("\t", lines[lines_in_pd], fixed = TRUE),
                nchar(lines[lines_in_pd]))
@@ -706,35 +710,32 @@ function(ifile, encoding = "unknown", ignore = character())
     for(entry in split(pd, seq_len(NROW(pd)))) {
         line1 <- entry$line1
         line2 <- entry$line2
-        col1 <- entry$col1 + 1L
-        col2 <- entry$col2 - 1L
+        col1 <- entry$col1
+        col2 <- entry$col2
         if(line1 == line2) {
             if(length(ptab <- tab[[as.character(line1)]])) {
-                col1 <- which(ptab == col1)
-                col2 <- which(ptab == col2)
+                col1 <- which(ptab == col1) + 1L
+                col2 <- which(ptab == col2) - 1L
             }
             substring(lines[line1], col1, col2) <- entry$text
         } else {
             texts <- unlist(strsplit(entry$text, "\n", fixed = TRUE))
             n <- length(texts)
             if(length(ptab <- tab[[as.character(line1)]])) {
-                col1 <- which(ptab == col1)
+                col1 <- which(ptab == col1) + 1L
             }
             substring(lines[line1], col1) <- texts[1L]
             pos <- seq(from = 2, length.out = n - 2)
             if(length(pos))
                 lines[line1 + pos - 1] <- texts[pos]
             if(length(ptab <- tab[[as.character(line2)]])) {
-                col2 <- which(ptab == col2)
+                col2 <- which(ptab == col2) - 1L
             }
             substring(lines[line2], 1L, col2) <- texts[n]
         }
     }
 
-    for(re in ignore[nzchar(ignore)])
-        lines <- blank_out_regexp_matches(lines, re)
-
-    lines
+    blank_out_ignores_in_lines(lines, ignore)
 }
 
 get_parse_data_for_message_strings <-
@@ -933,10 +934,7 @@ function (ifile, encoding = "unknown", ignore = character())
     ## blanks, similar to what the R text filter does.
     ## </FIXME>
 
-    for(re in ignore[nzchar(ignore)])
-        lines <- blank_out_regexp_matches(lines, re)
-
-    lines
+    blank_out_ignores_in_lines(lines, ignore)
 }
 
 ## For spell-checking all pot files in a package.
@@ -1043,13 +1041,15 @@ function(ifile, encoding, keep = c("Title", "Description"),
     lines <- readLines(ifile, encoding = encoding, warn = FALSE)
     line_has_tags <- grepl("^[^[:blank:]][^:]*:", lines)
     tags <- sub(":.*", "", lines[line_has_tags])
+    lines[line_has_tags] <-
+        blank_out_regexp_matches(lines[line_has_tags], "^[^:]*:")
     lines <- split(lines, cumsum(line_has_tags))
     ind <- is.na(match(tags, keep))
     lines[ind] <- lapply(lines[ind], function(s) rep.int("", length(s)))
+    ind <- !ind
+    lines[ind] <- lapply(lines[ind], paste0, " ")
     lines <- unlist(lines, use.names = FALSE)
-    for(re in ignore[nzchar(ignore)])
-        lines <- blank_out_regexp_matches(lines, re)
-    lines
+    blank_out_ignores_in_lines(lines, ignore)
 }
 
 ## For spell-checking package DESCRIPTION files.
@@ -1073,6 +1073,28 @@ function(dir, ignore = character(),
            encoding = encoding,
            program = program,
            dictionaries = dictionaries)
+}
+
+## For spell checking packages.
+
+aspell_package <-
+function(dir,
+         control = list(), program = NULL, dictionaries = character())
+{
+    args <- list(dir = dir,
+                 program = program,
+                 control = control,
+                 dictionaries = dictionaries)
+    a <- rbind(do.call(aspell_package_description, args),
+               do.call(aspell_package_Rd_files, args),
+               do.call(aspell_package_vignettes, args),
+               do.call(aspell_package_R_files, args),
+               do.call(aspell_package_C_files, args))
+    if(nrow(a)) {
+        a$File <- tools:::.file_path_relative_to_dir(a$File,
+                                                     dirname(dir))
+    }
+    a
 }
 
 ## For writing personal dictionaries:
@@ -1133,17 +1155,27 @@ function(dir, encoding = "unknown")
 ## Utilities.
 
 blank_out_regexp_matches <-
-function(s, re)
+function(s, re, ...)
 {
-    m <- gregexpr(re, s)
-    regmatches(s, m) <- Map(blanks, lapply(regmatches(s, m), nchar))
+    m <- gregexpr(re, s, ...)
+    regmatches(s, m) <-
+        Map(function(n) strrep(" ", n),
+            lapply(regmatches(s, m), nchar))
     s
 }
 
-blanks <-
-function(n) {
-    vapply(Map(rep.int, rep.int(" ", length(n)), n, USE.NAMES = FALSE),
-           paste, "", collapse = "")
+blank_out_ignores_in_lines <-
+function(lines, ignore)
+{
+    args <- list()
+    if(is.list(ignore)) {
+        args <- ignore[-1L]
+        ignore <- ignore[[1L]]
+    }
+    for(re in ignore[nzchar(ignore)])
+        lines <- do.call(blank_out_regexp_matches,
+                         c(list(lines, re), args))
+    lines
 }
 
 find_files_in_directories <-

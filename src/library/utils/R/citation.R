@@ -1,5 +1,5 @@
 #  File src/library/utils/R/citation.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
 #  Copyright (C) 1995-2015 The R Core Team
 #
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 ## What a silly name ...
 .is_not_nonempty_text <-
@@ -34,7 +34,7 @@ function(given = NULL, family = NULL, middle = NULL,
         return(structure(list(), class = "person"))
     }
     args <- lapply(args, .listify)
-    args_length <- sapply(args, length)
+    args_length <- lengths(args)
     if(!all(args_length_ok <- args_length %in% c(1L, max(args_length))))
         warning(gettextf("Not all arguments are of the same length, the following need to be recycled: %s",
                          paste(names(args)[!args_length_ok],
@@ -117,7 +117,7 @@ function(given = NULL, family = NULL, middle = NULL,
         rval <- list(given = given, family = family, role = role,
                      email = email, comment = comment)
         ## Canonicalize 0-length character arguments to NULL.
-        if(any(ind <- (sapply(rval, length) == 0L)))
+        if(any(ind <- (lengths(rval) == 0L)))
             rval[ind] <- vector("list", length = sum(ind))
         ## Give nothing if there is nothing.
         if(all(sapply(rval, is.null)))
@@ -220,7 +220,7 @@ function(x, name)
     if(oname == "first") rval <- lapply(rval, head, 1L)
     if(oname == "middle") {
         rval <- lapply(rval, tail, -1L)
-        if(any(ind <- (sapply(rval, length) == 0L)))
+        if(any(ind <- (lengths(rval) == 0L)))
             rval[ind] <- vector("list", length = sum(ind))
     }
 
@@ -453,7 +453,7 @@ function(bibtype, textVersion = NULL, header = NULL, footer = NULL, key = NULL,
     other <- lapply(other, .listify)
     max_length <- max(sapply(c(args, other), length))
 
-    args_length <- sapply(args, length)
+    args_length <- lengths(args)
     if(!all(args_length_ok <- args_length %in% c(1L, max_length)))
         warning(gettextf("Not all arguments are of the same length, the following need to be recycled: %s",
                          paste(names(args)[!args_length_ok],
@@ -461,7 +461,7 @@ function(bibtype, textVersion = NULL, header = NULL, footer = NULL, key = NULL,
                 domain = NA)
     args <- lapply(args, function(x) rep(x, length.out = max_length))
 
-    other_length <- sapply(other, length)
+    other_length <- lengths(other)
     if(!all(other_length_ok <- other_length %in% c(1L, max_length)))
         warning(gettextf("Not all arguments are of the same length, the following need to be recycled: %s",
                          paste(names(other)[!other_length_ok],
@@ -583,7 +583,7 @@ function(x, i, drop = TRUE)
     if(is.character(i) && is.null(names(x)))
         names(x) <- .bibentry_get_key(x)
     y <- x[i]
-    if(!all(ok <- sapply(y, length) > 0L)) {
+    if(!all(ok <- lengths(y) > 0L)) {
         warning("subscript out of bounds")
         y <- y[ok]
     }
@@ -677,7 +677,7 @@ function(x, style = "text", .bibstyle = NULL,
                },
                "textVersion" = {
                    out <- lapply(unclass(x), attr, "textVersion")
-                   out[!sapply(out, length)] <- ""
+                   out[!lengths(out)] <- ""
                    unlist(out)
                },
                "citation" = .format_bibentry_as_citation(x),
@@ -769,21 +769,16 @@ function(x, style = "text", .bibstyle = NULL, ...)
     invisible(x)
 }
 
-## Not vectorized for now: see ?regmatches for a vectorized version.
-.blanks <-
-function(n)
-    paste(rep.int(" ", n), collapse = "")
-
 .format_call_RR <-
 function(cname, cargs)
 {
     ## Format call with ragged right argument list (one arg per line).
     cargs <- as.list(cargs)
     n <- length(cargs)
-    lens <- sapply(cargs, length)
+    lens <- lengths(cargs)
     sums <- cumsum(lens)
     starters <- c(sprintf("%s(", cname),
-                  rep.int(.blanks(nchar(cname) + 1L), sums[n] - 1L))
+                  rep.int(strrep(" ", nchar(cname) + 1L), sums[n] - 1L))
     trailers <- c(rep.int("", sums[n] - 1L), ")")
     trailers[sums[-n]] <- ","
     sprintf("%s%s%s", starters, unlist(cargs), trailers)
@@ -822,7 +817,7 @@ function(x, collapse = FALSE)
         n <- length(v)
         if(n > 1L)
             prefix <- c(prefix,
-                        rep.int(.blanks(nchar(prefix)), n - 1L))
+                        rep.int(strrep(" ", nchar(prefix)), n - 1L))
         sprintf("%s%s", prefix, v)
     }
 
@@ -853,10 +848,10 @@ function(x, collapse = FALSE)
 
     if(!is.null(mheader <- attr(x, "mheader")))
         s[[1L]] <- c(s[[1L]],
-                     paste("mheader = ", deparse(mheader)))
+                     paste("mheader =", deparse(mheader)))
     if(!is.null(mfooter <- attr(x, "mfooter")))
         s[[1L]] <- c(s[[1L]],
-                     paste("mfooter = ", deparse(mfooter)))
+                     paste("mfooter =", deparse(mfooter)))
 
     s <- Map(.format_call_RR, "bibentry", s)
     if(collapse && (length(s) > 1L))
@@ -912,7 +907,7 @@ function(x, name, value)
 
     ## check bibtype
     if(name == "bibtype") {
-        stopifnot(all(sapply(value, length) == 1L))
+        stopifnot(all(lengths(value) == 1L))
         BibTeX_names <- names(tools:::BibTeX_entry_field_db)
         value <- unlist(value)
         pos <- match(tolower(value), tolower(BibTeX_names))
@@ -1166,15 +1161,15 @@ function(package = "base", lib.loc = NULL, auto = NULL)
               )
 
     z$url <- if(identical(meta$Repository, "CRAN"))
-        sprintf("http://CRAN.R-project.org/package=%s", package)
+        sprintf("https://CRAN.R-project.org/package=%s", package)
     else
         meta$URL
 
     if(identical(meta$Repository, "R-Forge")) {
         z$url <- if(!is.null(rfp <- meta$"Repository/R-Forge/Project"))
-            sprintf("http://R-Forge.R-project.org/projects/%s/", rfp)
+            sprintf("https://R-Forge.R-project.org/projects/%s/", rfp)
         else
-            "http://R-Forge.R-project.org/"
+            "https://R-Forge.R-project.org/"
         if(!is.null(rfr <- meta$"Repository/R-Forge/Revision"))
             z$note <- paste(z$note, rfr, sep = "/r")
     }
@@ -1321,17 +1316,20 @@ function(x)
 {
     if(is.character(x))
         x <- .read_authors_at_R_field(x)
-    ## Maintainers need cre roles and email addresses.
+    ## Maintainers need cre roles, valid email addresses and non-empty
+    ## names.
+    ## <FIXME>
+    ## Check validity of email addresses.
     x <- Filter(function(e)
-                !is.null(e$email) && ("cre" %in% e$role),
+                (!is.null(e$given) || !is.null(e$family)) && !is.null(e$email) && ("cre" %in% e$role),
                 x)
-    ## If this leaves nothing ...
-    if(!length(x)) return("")
-    paste(format(x, include = c("given", "family", "email")),
-          collapse = ",\n  ")
+    ## </FIXME>
+    ## If this leaves nothing or more than one ...
+    if(length(x) != 1L) return("")
+    format(x, include = c("given", "family", "email"))
 }
 
-# Cite using the default style (which is usually citeNatbib)
+## Cite using the default style (which is usually citeNatbib)
 
 cite <-
 function(keys, bib, ...)
@@ -1342,9 +1340,9 @@ function(keys, bib, ...)
     fn(keys, bib, ...)
 }
 
-# Cite using natbib-like options.  A bibstyle would normally
-# choose some of these options and just have a cite(keys, bib, previous)
-# function within it.
+## Cite using natbib-like options.  A bibstyle would normally
+## choose some of these options and just have a cite(keys, bib, previous)
+## function within it.
 
 citeNatbib <-
 local({

@@ -1,5 +1,5 @@
 #  File src/library/base/R/dataframe.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -12,10 +12,10 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 # Statlib code by John Chambers, Bell Labs, 1994
-# Changes Copyright (C) 1998-2014 The R Core Team
+# Changes Copyright (C) 1998-2015 The R Core Team
 
 
 ## As from R 2.4.0, row.names can be either character or integer.
@@ -265,6 +265,7 @@ as.data.frame.matrix <- function(x, row.names = NULL, optional = FALSE, ...,
     ## changed in 1.8.0
     if(is.null(row.names)) row.names <- dn[[1L]]
     collabs <- dn[[2L]]
+    ## These might be NA
     if(any(empty <- !nzchar(collabs)))
 	collabs[empty] <- paste0("V", ic)[empty]
     value <- vector("list", ncols)
@@ -436,7 +437,7 @@ data.frame <-
 	else {
             if(length(namesi)) vnames[[i]] <- namesi
             else if (no.vn[[i]]) {
-                tmpname <- deparse(object[[i]])[1L]
+                tmpname <- deparse(object[[i]], nlines = 1L)[1L]
                 if( substr(tmpname, 1L, 2L) == "I(" ) {
                     ntmpn <- nchar(tmpname, "c")
                     if(substr(tmpname, ntmpn, ntmpn) == ")")
@@ -891,7 +892,8 @@ data.frame <-
                                       "replacement has %d items, need %d"),
                              m, n*p), domain = NA)
             value <- matrix(value, n, p)  ## will recycle
-            value <- split(value, col(value))
+            ## <FIXME split.matrix>
+            value <- split(c(value), col(value))
         }
 	dimv <- c(n, p)
     } else { # a list
@@ -1215,7 +1217,7 @@ rbind.data.frame <- function(..., deparse.level = 1, make.row.names = TRUE)
 	else ri
     }
     allargs <- list(...)
-    allargs <- allargs[vapply(allargs, length, 1L) > 0L]
+    allargs <- allargs[lengths(allargs) > 0L]
     if(length(allargs)) {
     ## drop any zero-row data frames, as they may not have proper column
     ## types (e.g. NULL).
@@ -1290,7 +1292,7 @@ rbind.data.frame <- function(..., deparse.level = 1, make.row.names = TRUE)
             }
 	}
 	else if(is.list(xi)) {
-	    ni <- range(vapply(xi, length, 1L))
+	    ni <- range(lengths(xi))
 	    if(ni[1L] == ni[2L])
 		ni <- ni[1L]
 	    else stop("invalid list argument: all variables should have the same length")
@@ -1311,12 +1313,13 @@ rbind.data.frame <- function(..., deparse.level = 1, make.row.names = TRUE)
 	}
 	else if(length(xi)) {
 	    rows[[i]] <- nrow <- nrow + 1L
-            if(make.row.names) rlabs[[i]] <- if(nzchar(nmi)) nmi else as.integer(nrow)
+            if(make.row.names)
+		rlabs[[i]] <- if(nzchar(nmi)) nmi else as.integer(nrow)
 	}
     }
     nvar <- length(clabs)
     if(nvar == 0L)
-	nvar <- max(vapply(allargs, length, 1L)) # only vector args
+	nvar <- max(lengths(allargs)) # only vector args
     if(nvar == 0L)
 	return(structure(list(), class = "data.frame",
 			 row.names = integer()))
@@ -1390,9 +1393,9 @@ print.data.frame <-
 {
     n <- length(row.names(x))
     if(length(x) == 0L) {
-        cat(sprintf(ngettext(n, "data frame with 0 columns and %d row",
-                             "data frame with 0 columns and %d rows",
-                             domain = "R-base"), n), "\n", sep = "")
+	cat(sprintf(ngettext(n, "data frame with 0 columns and %d row",
+			     "data frame with 0 columns and %d rows"),
+		    n), "\n", sep = "")
     } else if(n == 0L) {
         ## FIXME: header format is inconsistent here
 	print.default(names(x), quote = FALSE)
@@ -1501,6 +1504,8 @@ Ops.data.frame <- function(e1, e2 = NULL)
     value <- list()
     rn <- NULL
     ## set up call as op(left, right)
+    ## These are used, despite
+    ## _R_CHECK_CODETOOLS_PROFILE_="suppressLocalUnused=FALSE"
     FUN <- get(.Generic, envir = parent.frame(), mode = "function")
     f <- if (unary) quote(FUN(left)) else quote(FUN(left, right))
     lscalar <- rscalar <- FALSE

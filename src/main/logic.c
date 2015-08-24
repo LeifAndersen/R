@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
  *  Copyright (C) 1995, 1996  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 1999--2014  The R Core Team.
+ *  Copyright (C) 1999--2015  The R Core Team.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 #ifdef HAVE_CONFIG_H
@@ -24,9 +24,10 @@
 
 #include <Defn.h>
 #include <Internal.h>
+#include <R_ext/Itermacros.h>
 
 /* interval at which to check interrupts, a guess */
-#define NINTERRUPT 10000000
+// #define NINTERRUPT 10000000
 
 
 static SEXP lunary(SEXP, SEXP, SEXP);
@@ -38,37 +39,28 @@ static SEXP binaryLogic2(int code, SEXP s1, SEXP s2);
 /* & | ! */
 SEXP attribute_hidden do_logic(SEXP call, SEXP op, SEXP args, SEXP env)
 {
-    SEXP ans, arg1, arg2;
-    int argc;
-
-    if (args == R_NilValue)
-	argc = 0;
-    else if (CDR(args) == R_NilValue)
-	argc = 1;
-    else if (CDDR(args) == R_NilValue)
-	argc = 2;
-    else
-	argc = length(args);
-    arg1 = CAR(args);
-    arg2 = CADR(args);
-
-    if (ATTRIB(arg1) != R_NilValue || ATTRIB(arg2) != R_NilValue) {
-	if (DispatchGroup("Ops",call, op, args, env, &ans))
+    SEXP arg1 = CAR(args); //, arg2 = CADR(args)
+    Rboolean attr1 = ATTRIB(arg1) != R_NilValue;
+    if (attr1 || ATTRIB(CADR(args)) != R_NilValue) {
+	SEXP ans;
+	if (DispatchGroup("Ops", call, op, args, env, &ans))
 	    return ans;
     }
-    else if (argc == 1 && IS_SCALAR(arg1, LGLSXP)) {
-	/* directly handle '!' operator for simple logical scalars. */
-        int v = LOGICAL(arg1)[0];
-        return ScalarLogical(v == NA_LOGICAL ? v : ! v);
-    }
+    /* The above did dispatch to valid S3/S4 methods, including those with
+     * "wrong" number of arguments.
+     * Now require binary calls to `&` and `|`  or unary calls to `!` : */
+    checkArity(op, args);
 
-    if (argc == 1)
+    if (CDR(args) == R_NilValue) { // one argument  <==>  !(arg1)
+	if (!attr1 && IS_SCALAR(arg1, LGLSXP)) {
+	    /* directly handle '!' operator for simple logical scalars. */
+	    int v = LOGICAL(arg1)[0];
+	    return ScalarLogical(v == NA_LOGICAL ? v : ! v);
+	}
 	return lunary(call, op, arg1);
-    else if (argc == 2)
-	return lbinary(call, op, args);
-    else
-	error(_("binary operations require two arguments"));
-    return R_NilValue;	/* for -Wall */
+    }
+    // else : two arguments
+    return lbinary(call, op, args);
 }
 
 #define isRaw(x) (TYPEOF(x) == RAWSXP)
@@ -84,8 +76,8 @@ static SEXP lbinary(SEXP call, SEXP op, SEXP args)
     if (isRaw(x) && isRaw(y)) {
     }
     else if (!isNumber(x) || !isNumber(y))
-    	errorcall(call,
-    		  _("operations are possible only for numeric, logical or complex types"));
+	errorcall(call,
+		  _("operations are possible only for numeric, logical or complex types"));
     tsp = R_NilValue;		/* -Wall */
     klass = R_NilValue;		/* -Wall */
     xarray = isArray(x);
@@ -189,7 +181,8 @@ static SEXP lunary(SEXP call, SEXP op, SEXP arg)
 	errorcall(call, _("invalid argument type"));
     }
     if (isLogical(arg) || isRaw(arg))
-	x = PROTECT(duplicate(arg));  // copy all attributes in this case 
+	// copy all attributes in this case
+	x = PROTECT(shallow_duplicate(arg));
     else {
 	x = PROTECT(allocVector(isRaw(arg) ? RAWSXP : LGLSXP, len));
 	PROTECT(names = getAttrib(arg, R_NamesSymbol));
@@ -297,7 +290,7 @@ SEXP attribute_hidden do_logic2(SEXP call, SEXP op, SEXP args, SEXP env)
 
 static SEXP binaryLogic(int code, SEXP s1, SEXP s2)
 {
-    R_xlen_t i, n, n1, n2;
+    R_xlen_t i, n, n1, n2, i1, i2;
     int x1, x2;
     SEXP ans;
 
@@ -312,30 +305,30 @@ static SEXP binaryLogic(int code, SEXP s1, SEXP s2)
 
     switch (code) {
     case 1:		/* & : AND */
-	for (i = 0; i < n; i++) {
+	MOD_ITERATE2(n, n1, n2, i, i1, i2, {
 //	    if ((i+1) % NINTERRUPT == 0) R_CheckUserInterrupt();
-	    x1 = LOGICAL(s1)[i % n1];
-	    x2 = LOGICAL(s2)[i % n2];
+	    x1 = LOGICAL(s1)[i1];
+	    x2 = LOGICAL(s2)[i2];
 	    if (x1 == 0 || x2 == 0)
 		LOGICAL(ans)[i] = 0;
 	    else if (x1 == NA_LOGICAL || x2 == NA_LOGICAL)
 		LOGICAL(ans)[i] = NA_LOGICAL;
 	    else
 		LOGICAL(ans)[i] = 1;
-	}
+	});
 	break;
     case 2:		/* | : OR */
-	for (i = 0; i < n; i++) {
+	MOD_ITERATE2(n, n1, n2, i, i1, i2, {
 //	    if ((i+1) % NINTERRUPT == 0) R_CheckUserInterrupt();
-	    x1 = LOGICAL(s1)[i % n1];
-	    x2 = LOGICAL(s2)[i % n2];
+	    x1 = LOGICAL(s1)[i1];
+	    x2 = LOGICAL(s2)[i2];
 	    if ((x1 != NA_LOGICAL && x1) || (x2 != NA_LOGICAL && x2))
 		LOGICAL(ans)[i] = 1;
 	    else if (x1 == 0 && x2 == 0)
 		LOGICAL(ans)[i] = 0;
 	    else
 		LOGICAL(ans)[i] = NA_LOGICAL;
-	}
+	});
 	break;
     case 3:
 	error(_("Unary operator `!' called with two arguments"));
@@ -346,7 +339,7 @@ static SEXP binaryLogic(int code, SEXP s1, SEXP s2)
 
 static SEXP binaryLogic2(int code, SEXP s1, SEXP s2)
 {
-    R_xlen_t i, n, n1, n2;
+    R_xlen_t i, n, n1, n2, i1, i2;
     Rbyte x1, x2;
     SEXP ans;
 
@@ -361,20 +354,20 @@ static SEXP binaryLogic2(int code, SEXP s1, SEXP s2)
 
     switch (code) {
     case 1:		/* & : AND */
-	for (i = 0; i < n; i++) {
+	MOD_ITERATE2(n, n1, n2, i, i1, i2, {
 //	    if ((i+1) % NINTERRUPT == 0) R_CheckUserInterrupt();
-	    x1 = RAW(s1)[i % n1];
-	    x2 = RAW(s2)[i % n2];
+	    x1 = RAW(s1)[i1];
+	    x2 = RAW(s2)[i2];
 	    RAW(ans)[i] = x1 & x2;
-	}
+	});
 	break;
     case 2:		/* | : OR */
-	for (i = 0; i < n; i++) {
+	MOD_ITERATE2(n, n1, n2, i, i1, i2, {
 //	    if ((i+1) % NINTERRUPT == 0) R_CheckUserInterrupt();
-	    x1 = RAW(s1)[i % n1];
-	    x2 = RAW(s2)[i % n2];
+	    x1 = RAW(s1)[i1];
+	    x2 = RAW(s2)[i2];
 	    RAW(ans)[i] = x1 | x2;
-	}
+	});
 	break;
     }
     return ans;
@@ -389,19 +382,19 @@ static int checkValues(int op, int na_rm, int *x, R_xlen_t n)
     int has_na = 0;
     for (i = 0; i < n; i++) {
 //	if ((i+1) % NINTERRUPT == 0) R_CheckUserInterrupt();
-        if (!na_rm && x[i] == NA_LOGICAL) has_na = 1;
-        else {
-            if (x[i] == TRUE && op == _OP_ANY) return TRUE;
-            if (x[i] == FALSE && op == _OP_ALL) return FALSE;
-        }
+	if (!na_rm && x[i] == NA_LOGICAL) has_na = 1;
+	else {
+	    if (x[i] == TRUE && op == _OP_ANY) return TRUE;
+	    if (x[i] == FALSE && op == _OP_ALL) return FALSE;
+	}
     }
     switch (op) {
     case _OP_ANY:
-        return has_na ? NA_LOGICAL : FALSE;
+	return has_na ? NA_LOGICAL : FALSE;
     case _OP_ALL:
-        return has_na ? NA_LOGICAL : TRUE;
+	return has_na ? NA_LOGICAL : TRUE;
     default:
-        error("bad op value for do_logic3");
+	error("bad op value for do_logic3");
     }
     return NA_LOGICAL; /* -Wall */
 }
@@ -448,13 +441,13 @@ SEXP attribute_hidden do_logic3(SEXP call, SEXP op, SEXP args, SEXP env)
 	    t = coerceVector(t, LGLSXP);
 	}
 	val = checkValues(PRIMVAL(op), narm, LOGICAL(t), XLENGTH(t));
-        if (val != NA_LOGICAL) {
-            if ((PRIMVAL(op) == _OP_ANY && val)
-                || (PRIMVAL(op) == _OP_ALL && !val)) {
-                has_na = 0;
-                break;
-            }
-        } else has_na = 1;
+	if (val != NA_LOGICAL) {
+	    if ((PRIMVAL(op) == _OP_ANY && val)
+		|| (PRIMVAL(op) == _OP_ALL && !val)) {
+		has_na = 0;
+		break;
+	    }
+	} else has_na = 1;
     }
     UNPROTECT(2);
     return has_na ? ScalarLogical(NA_LOGICAL) : ScalarLogical(val);

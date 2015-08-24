@@ -15,7 +15,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 
@@ -71,7 +71,7 @@ SEXP attribute_hidden do_delayed(SEXP call, SEXP op, SEXP args, SEXP rho)
     SEXP name = R_NilValue /* -Wall */, expr, eenv, aenv;
     checkArity(op, args);
 
-    if (!isString(CAR(args)) || length(CAR(args)) == 0)
+    if (!isString(CAR(args)) || LENGTH(CAR(args)) == 0)
 	error(_("invalid first argument"));
     else
 	name = installTrChar(STRING_ELT(CAR(args), 0));
@@ -137,7 +137,7 @@ SEXP attribute_hidden do_onexit(SEXP call, SEXP op, SEXP args, SEXP rho)
     static SEXP do_onexit_formals = NULL;
 
     if (do_onexit_formals == NULL)
-        do_onexit_formals = allocFormalsList2(install("expr"), install("add"));
+	do_onexit_formals = allocFormalsList2(install("expr"), install("add"));
 
     PROTECT(argList =  matchArgs(do_onexit_formals, args, call));
     if (CAR(argList) == R_MissingArg) code = R_NilValue;
@@ -189,7 +189,7 @@ SEXP attribute_hidden do_args(SEXP call, SEXP op, SEXP args, SEXP rho)
     SEXP s;
 
     checkArity(op,args);
-    if (TYPEOF(CAR(args)) == STRSXP && length(CAR(args))==1) {
+    if (TYPEOF(CAR(args)) == STRSXP && LENGTH(CAR(args)) == 1) {
 	PROTECT(s = installTrChar(STRING_ELT(CAR(args), 0)));
 	SETCAR(args, findFun(s, rho));
 	UNPROTECT(1);
@@ -485,19 +485,19 @@ SEXP attribute_hidden do_add_mark(SEXP call, SEXP op, SEXP args, SEXP rho)
 static Rboolean R_IsImportsEnv(SEXP env)
 {
     if (isNull(env) || !isEnvironment(env))
-        return FALSE;
+	return FALSE;
     if (ENCLOS(env) != R_BaseNamespace)
-        return FALSE;
+	return FALSE;
     SEXP name = getAttrib(env, R_NameSymbol);
-    if (!isString(name) || length(name) != 1)
-        return FALSE;
+    if (!isString(name) || LENGTH(name) != 1)
+	return FALSE;
 
     const char *imports_prefix = "imports:";
     const char *name_string = CHAR(STRING_ELT(name, 0));
     if (!strncmp(name_string, imports_prefix, strlen(imports_prefix)))
-        return TRUE;
+	return TRUE;
     else
-        return FALSE;
+	return FALSE;
 }
 
 SEXP attribute_hidden do_parentenvgets(SEXP call, SEXP op, SEXP args, SEXP rho)
@@ -538,6 +538,7 @@ SEXP attribute_hidden do_envirName(SEXP call, SEXP op, SEXP args, SEXP rho)
     SEXP env = CAR(args), ans=mkString(""), res;
 
     checkArity(op, args);
+    PROTECT(ans);
     if (TYPEOF(env) == ENVSXP ||
 	TYPEOF((env = simple_as_environment(env))) == ENVSXP) {
 	if (env == R_GlobalEnv) ans = mkString("R_GlobalEnv");
@@ -549,6 +550,7 @@ SEXP attribute_hidden do_envirName(SEXP call, SEXP op, SEXP args, SEXP rho)
 	    ans = ScalarString(STRING_ELT(R_NamespaceEnvSpec(env), 0));
 	else if (!isNull(res = getAttrib(env, R_NameSymbol))) ans = res;
     }
+    UNPROTECT(1); /* ans */
     return ans;
 }
 
@@ -679,7 +681,7 @@ SEXP attribute_hidden do_cat(SEXP call, SEXP op, SEXP args, SEXP rho)
     args = CDR(args);
 
     fill = CAR(args);
-    if ((!isNumeric(fill) && !isLogical(fill)) || (length(fill) != 1))
+    if ((!isNumeric(fill) && !isLogical(fill)) || (LENGTH(fill) != 1))
 	error(_("invalid '%s' argument"), "fill");
     if (isLogical(fill)) {
 	if (asLogical(fill) == 1)
@@ -1062,7 +1064,7 @@ SEXP attribute_hidden do_lengthgets(SEXP call, SEXP op, SEXP args, SEXP rho)
 #ifdef LONG_VECTOR_SUPPORT
 	return xlengthgets(x, len);
 #else
-        error(_("vector size specified is too large"));
+	error(_("vector size specified is too large"));
 	return x; /* -Wall */
 #endif
     }
@@ -1079,7 +1081,7 @@ static SEXP expandDots(SEXP el, SEXP rho)
 
     while (el != R_NilValue) {
 	if (CAR(el) == R_DotsSymbol) {
-	    SEXP h = findVar(CAR(el), rho);
+	    SEXP h = PROTECT(findVar(CAR(el), rho));
 	    if (TYPEOF(h) == DOTSXP || h == R_NilValue) {
 		while (h != R_NilValue) {
 		    SETCDR(tail, CONS(CAR(h), R_NilValue));
@@ -1089,6 +1091,7 @@ static SEXP expandDots(SEXP el, SEXP rho)
 		}
 	    } else if (h != R_MissingArg)
 		error(_("'...' used in an incorrect context"));
+	    UNPROTECT(1); /* h */
 	} else {
 	    SETCDR(tail, CONS(CAR(el), R_NilValue));
 	    tail = CDR(tail);
@@ -1106,12 +1109,12 @@ static SEXP expandDots(SEXP el, SEXP rho)
 static SEXP setDflt(SEXP arg, SEXP dflt)
 {
     if (dflt) {
-    	SEXP dflt1, dflt2;
-    	PROTECT(dflt1 = deparse1line(dflt, TRUE));
-    	PROTECT(dflt2 = deparse1line(CAR(arg), TRUE));
-    	error(_("duplicate 'switch' defaults: '%s' and '%s'"),
+	SEXP dflt1, dflt2;
+	PROTECT(dflt1 = deparse1line(dflt, TRUE));
+	PROTECT(dflt2 = deparse1line(CAR(arg), TRUE));
+	error(_("duplicate 'switch' defaults: '%s' and '%s'"),
 	      CHAR(STRING_ELT(dflt1, 0)), CHAR(STRING_ELT(dflt2, 0)));
-    	UNPROTECT(2); /* won't get here, but just for good form */
+	UNPROTECT(2); /* won't get here, but just for good form */
     }
     return(CAR(arg));
 }
@@ -1145,7 +1148,7 @@ SEXP attribute_hidden do_switch(SEXP call, SEXP op, SEXP args, SEXP rho)
     if (nargs < 1) errorcall(call, _("'EXPR' is missing"));
     check1arg(args, call, "EXPR");
     PROTECT(x = eval(CAR(args), rho));
-    if (!isVector(x) || length(x) != 1)
+    if (!isVector(x) || LENGTH(x) != 1)
 	errorcall(call, _("EXPR must be a length 1 vector"));
     if (isFactor(x))
 	warningcall(call,
@@ -1186,7 +1189,7 @@ SEXP attribute_hidden do_switch(SEXP call, SEXP op, SEXP args, SEXP rho)
 		} else
 		    dflt = setDflt(y, dflt);
 	    }
- 	    if (dflt) {
+	    if (dflt) {
 		ans =  eval(dflt, rho);
 		UNPROTECT(2);
 		return ans;

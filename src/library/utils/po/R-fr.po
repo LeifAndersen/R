@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: R 2.12.0\n"
 "Report-Msgid-Bugs-To: bugs.r-project.org\n"
-"POT-Creation-Date: 2015-01-29 09:33\n"
+"POT-Creation-Date: 2015-06-06 13:51\n"
 "PO-Revision-Date: 2014-03-17 11:04+0100\n"
 "Last-Translator: Philippe Grosjean <phgrosjean@sciviews.org>\n"
 "Language-Team: French <R-core@r-project.org>\n"
@@ -85,12 +85,6 @@ msgstr "le chemin vers %s contient des espaces,"
 
 msgid "this may cause problems when running LaTeX"
 msgstr "cela peut provoquer des problèmes dans l'utilisation de LaTeX"
-
-msgid "at"
-msgstr ""
-
-msgid ","
-msgstr ","
 
 msgid "the output file '%s' has disappeared"
 msgstr "le fichier en sortie '%s' a disparu"
@@ -452,11 +446,19 @@ msgstr "spécification de champ incorrecte"
 msgid "do not know what to search"
 msgstr "je ne sais pas quoi rechercher"
 
-msgid "incorrect type specification"
-msgstr "spécification de type incorrecte"
-
 msgid "argument 'help.db' is deprecated"
 msgstr "l'argument 'help.db' est obsolète"
+
+msgid "no information in the database for package %s: need 'rebuild = TRUE'?"
+msgstr ""
+"pas d'information dans la base de données pour le package %s : faut-il "
+"'rebuild = TRUE' ?"
+
+msgid "incorrect 'agrep' specification"
+msgstr "spécification 'agrep' incorrecte"
+
+msgid "incorrect type specification"
+msgstr "spécification de type incorrecte"
 
 msgid "could not find package %s"
 msgstr "impossible de trouver le packages %s"
@@ -468,14 +470,6 @@ msgid "removing all entries with invalid multi-byte character data"
 msgstr ""
 "suppression de toutes les entrées ayant des données de type caractère multi-"
 "octets incorrectes"
-
-msgid "no information in the database for package %s: need 'rebuild = TRUE'?"
-msgstr ""
-"pas d'information dans la base de données pour le package %s : faut-il "
-"'rebuild = TRUE' ?"
-
-msgid "incorrect 'agrep' specification"
-msgstr "spécification 'agrep' incorrecte"
 
 msgid "invalid browser name, check options(\"browser\")."
 msgstr "nom de navigateur incorrect, vérifiez options(\"browser\")."
@@ -546,11 +540,14 @@ msgstr ""
 msgid "no function '%s' is visible"
 msgstr "aucune fonction '%s' n'est visible"
 
-msgid "function '%s' appears not to be generic"
-msgstr "la fonction '%s' semble ne pas être générique"
-
 msgid "generic function '%s' dispatches methods for generic '%s'"
 msgstr "la fonction générique '%s' distribue les méthodes génériques '%s'"
+
+#, fuzzy
+msgid ""
+"function '%s' appears not to be S3 generic; found functions that look like "
+"S3 methods"
+msgstr "la fonction '%s' semble ne pas être générique"
 
 msgid "must supply 'generic.function' or 'class'"
 msgstr "il faut fournir 'generic.function' ou 'class'"
@@ -1173,6 +1170,9 @@ msgstr "la création de %s a échoué"
 msgid "there is no 'libs' directory in package %s"
 msgstr "aucun répertoire 'libs' n'est trouvé dans le package %s"
 
+msgid "Only '*.zip' and '*.tar.gz' files can be installed."
+msgstr ""
+
 msgid "winDialog() cannot be used non-interactively"
 msgstr "winDialog() ne peut être utilisé en mode non interactif"
 
@@ -1332,16 +1332,14 @@ msgid_plural "invalid roman numerals: %s"
 msgstr[0] "nombre roman incorrect : %s"
 msgstr[1] "nombres romans incorrects : %s"
 
-msgid "is"
-msgid_plural "are"
-msgstr[0] ""
-msgstr[1] ""
-
 msgid "package %s is in use and will not be installed"
 msgid_plural "packages %s are in use and will not be installed"
 msgstr[0] "le package %s est en cours d'utilisation et ne sera pas installé"
 msgstr[1] ""
 "les packages %s sont en cours d'utilisation et ne seront pas installés"
+
+#~ msgid ","
+#~ msgstr ","
 
 #~ msgid ""
 #~ "type == \"both\" cannot be used if 'available' or 'contriburl' is "

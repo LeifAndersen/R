@@ -1,7 +1,7 @@
 #  File src/library/graphics/R/sunflowerplot.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
-#  Copyright (C) 1995-2014 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 sunflowerplot <- function(x, ...) UseMethod("sunflowerplot")
 
@@ -97,7 +97,7 @@ sunflowerplot.formula <-
 	m$data <- as.data.frame(data)
     m$xlab <- m$ylab <- m$... <- NULL
     m$na.action <- na.action # force use of default for this method
-    require(stats, quietly = TRUE)
+    ## need stats:: for non-standard evaluation
     m[[1L]] <- quote(stats::model.frame)
     mf <- eval(m, parent.frame())
     if(NCOL(mf) != 2L)

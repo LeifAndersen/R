@@ -403,21 +403,6 @@ stopifnot(.Last.value == 8.5)
 ## was 272 with a garbled message in R 3.0.0 - 3.1.0.
 
 
-## Bugs reported by Radford Neal
-x <- pairlist(list(1,2))
-x[[c(1,2)]] <- NULL   # wrongly gave an error, referring to misuse
-                      # of the internal SET_VECTOR_ELT procedure
-stopifnot(identical(x, pairlist(list(1))))
-
-a <- pairlist(10,20,30,40,50,60)
-dim(a) <- c(2,3)
-dimnames(a) <- list(c("a","b"),c("x","y","z"))
-# print(a)              # doesn't print names, not fixed
-a[["a","x"]] <- 0
-stopifnot(a[["a","x"]] == 0)
-## First gave a spurious error, second caused a seg.fault
-
-
 ## numericDeriv failed to duplicate variables in
 ## the expression before modifying them.  PR#15849
 x <- 10; y <- 10
@@ -436,6 +421,24 @@ stopifnot(identical(pp[1,], c("0", " ", ".", " ")),
 ## all 4 prettyNum() would error out
 
 
+## checking all.equal() with externalptr
+library(methods) # getClass()'s versionKey is an e.ptr
+cA <- getClass("ANY")
+stopifnot(all.equal(cA, cA),
+          is.character(all.equal(cA, getClass("S4"))))
+# both all.equal() failed in R <= 3.1.1
+
+
+## as.hexmode(x), as.octmode(x)  when x is double
+x <- c(NA, 1)
+stopifnot(identical(x == x,
+		    as.hexmode(x) == as.octmode(x)))
+p <- c(1, pi)
+tools::assertError(as.hexmode(p))
+tools::assertError(as.octmode(p))
+## where all "wrong" in R <= 3.1.1
+
+
 ## PR#15935
 y <- 1:3
 drop1(lm(y ~ 1))
@@ -448,45 +451,6 @@ nm <- deparse(body(pbinom)[[2]])# == "C_pbinom" currently
 gg <- getAnywhere(nm)
 stopifnot(length(gg$objs) == 1)
 ## was 4 and printed "4 differing objects matching ‘C_pbinom’ ..." in R <= 3.1.1
-
-
-## Radford (R-devel, June 24, 2014); M.Maechler
-m <- matrix(1:2, 1,2); v <- 1:3
-stopifnot(identical(crossprod(2, v), t(2) %*% v),
-	  identical(crossprod(m, v), t(m) %*% v),
-	  identical(5 %*% v, 5 %*% t(v)),
-          identical(tcrossprod(m, 1:2), m %*% 1:2) )
-## gave error "non-conformable arguments" in R <= 3.2.0
-
-
-## list <--> environment
-L0 <- list()
-stopifnot(identical(L0, as.list(as.environment(L0))))
-## as.env..() did not work, and as.list(..) gave non-NULL names in R <= 3.1.1
-
-## all.equal() for environments and refClass()es
-RR <- setRefClass("Ex", fields = list(nr = "numeric"))
-m1 <- RR$new(); m2 <- RR$new(); m3 <- RR$new(nr = pi); m4 <- RR$new(nr=3.14159)
-ee <- emptyenv(); e2 <- new.env()
-stopifnot(all.equal(ee,ee), identical(ee,ee), !identical(ee,e2), all.equal(ee,e2),
-	  identical(m3,m3), !identical(m1,m2),
-	  all.equal(m1,m2), !isTRUE(all.equal(m1,m3)), !isTRUE(all.equal(m1,m4)),
-	  all.equal(m3,m4, tol=1e-6), grepl("relative difference", all.equal(m3,m4)),
-	  TRUE)
-## did not work in R <= 3.1.1
-e3 <- new.env()
-e3$p <- "p"; e2$p <- "p"; ae.p <- all.equal(e2,e3)
-e3$q <- "q";              ae.q <- all.equal(e2,e3)
-e2$q <- "Q";              ae.Q <- all.equal(e2,e3)
-stopifnot(ae.p, grepl("^Length", ae.q), grepl("string mismatch", ae.Q))
-e2$q <- "q"; e2$r <- pi; e3$r <- 3.14159265
-stopifnot(all.equal(e2,e3),
-	  grepl("relative difference", all.equal(e2,e3, tol=1e-10)))
-g <- globalenv() # so it now contains itself
-l <- list(e = g)
-stopifnot(all.equal(g,g),
-	  all.equal(l,l))
-## these ran into infinite recursion error.
 
 
 ## 0-length consistency of options(), PR#15979
@@ -509,43 +473,6 @@ hcab <- as.hclust(d.ab)
 stopifnot(hcab$order == c(2, 4, 1, 3, 7, 5, 6),
 	  hcab$labels == c(paste0("A", 1:4), paste0("B", 1:3)))
 ## was wrong in R <= 3.1.1
-
-
-## envRefClass prototypes are a bit special -- broke all.equal() for baseenv()
-rc <- getClass("refClass")
-rp <- rc@prototype
-str(rp) ## failed
-rp ## show() failed ..
-(ner <- new("envRefClass")) # show() failed
-stopifnot(all.equal(rp,rp), all.equal(ner,ner))
-be <- baseenv()
-system.time(stopifnot(all.equal(be,be)))## <- takes a few sec's
-stopifnot(
-    grepl("not identical.*character", print(all.equal(rp, ner))),
-    grepl("not identical.*character", print(all.equal(ner, rp))))
-system.time(stopifnot(all.equal(globalenv(), globalenv())))
-## Much of the above failed in  R <= 3.2.0
-
-
-## while did not protect its argument, which caused an error
-## under gctorture, PR#15990
-gctorture()
-suppressWarnings(while(c(FALSE, TRUE)) 1)
-gctorture(FALSE)
-## gave an error because the test got released when the warning was generated.
-
-
-## hist(x, breaks=*) with too large bins, PR#15988
-set.seed(5); x <- runif(99)
-Hist <- function(x, b) hist(x, breaks=b, plot=FALSE)$counts
-for(k in 1:5) {
-    b0 <- seq_len(k-1)/k
-    H.ok <- Hist(x, c(-10, b0, 10))
-    for(In in c(1000, 1e9, Inf))
-	stopifnot(identical(Hist(x, c(-In, b0, In)), H.ok),
-		  identical(Hist(x, c( 0,  b0, In)), H.ok))
-}
-## "wrong" results for k in {2,3,4} in R <= 3.1.1
 
 
 ## bw.SJ() and similar with NA,Inf values, PR#16024
@@ -599,14 +526,6 @@ rd <- tools::parse_Rd(f)
 ## was taken as the start of a comment.
 
 
-## missing() did not propagate through '...', PR#15707
-check <- function(x,y,z) c(missing(x), missing(y), missing(z))
-check1 <- function(...) check(...)
-check2 <- function(...) check1(...)
-stopifnot(identical(check2(one, , three), c(FALSE, TRUE, FALSE)))
-## missing() was unable to handle recursive promises
-
-
 ## power.t.test() failure for very large n (etc): PR#15792
 (ptt <- power.t.test(delta = 1e-4, sd = .35, power = .8))
 (ppt <- power.prop.test(p1 = .5, p2 = .501, sig.level=.001, power=0.90, tol=1e-8))
@@ -623,6 +542,113 @@ stopifnot(identical(x0, x))
 ## x had 'NA' instead of 'NaN'
 
 
+## PR#16205
+stopifnot(length(glob2rx(character())) == 0L)
+## was "^$" in R < 3.1.3
+
+
+### Bugs fixed in R 3.2.0
+
+## Bugs reported by Radford Neal
+x <- pairlist(list(1, 2))
+x[[c(1, 2)]] <- NULL   # wrongly gave an error, referring to misuse
+                       # of the internal SET_VECTOR_ELT procedure
+stopifnot(identical(x, pairlist(list(1))))
+
+a <- pairlist(10, 20, 30, 40, 50, 60)
+dim(a) <- c(2, 3)
+dimnames(a) <- list(c("a", "b"), c("x", "y", "z"))
+# print(a)              # doesn't print names, not fixed
+a[["a", "x"]] <- 0
+stopifnot(a[["a", "x"]] == 0)
+## First gave a spurious error, second caused a seg.fault
+
+
+## Radford (R-devel, June 24, 2014); M.Maechler
+m <- matrix(1:2, 1,2); v <- 1:3
+stopifnot(identical(crossprod(2, v), t(2) %*% v),
+	  identical(crossprod(m, v), t(m) %*% v),
+	  identical(5 %*% v, 5 %*% t(v)),
+          identical(tcrossprod(m, 1:2), m %*% 1:2) )
+## gave error "non-conformable arguments" in R <= 3.2.0
+
+
+## list <--> environment
+L0 <- list()
+stopifnot(identical(L0, as.list(as.environment(L0))))
+## as.env..() did not work, and as.list(..) gave non-NULL names in R 3.1.x
+
+
+## all.equal() for environments and refClass()es
+RR <- setRefClass("Ex", fields = list(nr = "numeric"))
+m1 <- RR$new(); m2 <- RR$new(); m3 <- RR$new(nr = pi); m4 <- RR$new(nr=3.14159)
+ee <- emptyenv(); e2 <- new.env()
+stopifnot(all.equal(ee,ee), identical(ee,ee), !identical(ee,e2), all.equal(ee,e2),
+	  identical(m3,m3), !identical(m1,m2),
+	  all.equal(m1,m2), !isTRUE(all.equal(m1,m3)), !isTRUE(all.equal(m1,m4)),
+	  all.equal(m3,m4, tol=1e-6), grepl("relative difference", all.equal(m3,m4)),
+	  TRUE)
+## did not work in R 3.1.x
+e3 <- new.env()
+e3$p <- "p"; e2$p <- "p"; ae.p <- all.equal(e2,e3)
+e3$q <- "q";              ae.q <- all.equal(e2,e3)
+e2$q <- "Q";              ae.Q <- all.equal(e2,e3)
+stopifnot(ae.p, grepl("^Length", ae.q), grepl("string mismatch", ae.Q))
+e2$q <- "q"; e2$r <- pi; e3$r <- 3.14159265
+stopifnot(all.equal(e2, e3),
+	  grepl("relative difference", all.equal(e2, e3, tol=1e-10)))
+g <- globalenv() # so it now contains itself
+l <- list(e = g)
+stopifnot(all.equal(g, g),
+	  all.equal(l, l))
+## these ran into infinite recursion error.
+
+
+## missing() did not propagate through '...', PR#15707
+check <- function(x,y,z) c(missing(x), missing(y), missing(z))
+check1 <- function(...) check(...)
+check2 <- function(...) check1(...)
+stopifnot(identical(check2(one, , three), c(FALSE, TRUE, FALSE)))
+## missing() was unable to handle recursive promises
+
+
+## envRefClass prototypes are a bit special -- broke all.equal() for baseenv()
+rc <- getClass("refClass")
+rp <- rc@prototype
+str(rp) ## failed
+rp ## show() failed ..
+(ner <- new("envRefClass")) # show() failed
+stopifnot(all.equal(rp,rp), all.equal(ner,ner))
+be <- baseenv()
+system.time(stopifnot(all.equal(be,be)))## <- takes a few sec's
+stopifnot(
+    grepl("not identical.*character", print(all.equal(rp, ner))),
+    grepl("not identical.*character", print(all.equal(ner, rp))))
+system.time(stopifnot(all.equal(globalenv(), globalenv())))
+## Much of the above failed in  R <= 3.2.0
+
+
+## while did not protect its argument, which caused an error
+## under gctorture, PR#15990
+gctorture()
+suppressWarnings(while(c(FALSE, TRUE)) 1)
+gctorture(FALSE)
+## gave an error because the test got released when the warning was generated.
+
+
+## hist(x, breaks =) with too large bins, PR#15988
+set.seed(5); x <- runif(99)
+Hist <- function(x, b) hist(x, breaks = b, plot = FALSE)$counts
+for(k in 1:5) {
+    b0 <- seq_len(k-1)/k
+    H.ok <- Hist(x, c(-10, b0, 10))
+    for(In in c(1000, 1e9, Inf))
+	stopifnot(identical(Hist(x, c(-In, b0, In)), H.ok),
+		  identical(Hist(x, c( 0,  b0, In)), H.ok))
+}
+## "wrong" results for k in {2,3,4} in R 3.1.x
+
+
 ## eigen(*, symmetric = <default>) with asymmetric dimnames,  PR#16151
 m <- matrix(c(83,41), 5, 4,
 	    dimnames=list(paste0("R",1:5), paste0("C",1:4)))[-5,] + 3*diag(4)
@@ -637,15 +663,254 @@ test2 <- function(x, ...) match.call(test2, sys.call())
 stopifnot(identical(test(1, 3), quote(test2(x=x, 2, 3))))
 ## wrongly gave test2(x=x, 2, 2, 3) in R <= 3.1.2
 
+
 ## callGeneric not forwarding dots in call (PR#16141)
 setGeneric("foo", function(x, ...) standardGeneric("foo"))
 setMethod("foo", "character",
-          function(x, capitalize=FALSE) if (capitalize) toupper(x) else x)
+          function(x, capitalize = FALSE) if (capitalize) toupper(x) else x)
 setMethod("foo", "factor",
-          function(x, capitalize=FALSE) { x <- as.character(x);  callGeneric() })
+          function(x, capitalize = FALSE) { x <- as.character(x);  callGeneric() })
 toto1 <- function(x, ...) foo(x, ...)
-stopifnot(identical(toto1(factor("a"), capitalize=TRUE), "A"))
+stopifnot(identical(toto1(factor("a"), capitalize = TRUE), "A"))
 ## wrongly did not capitalize in R <= 3.1.2
 
 
-proc.time()
+## Accessing non existing objects must be an error
+tools::assertError(base :: foobar)
+tools::assertError(base :::foobar)
+tools::assertError(stats:::foobar)
+tools::assertError(stats:: foobar)
+## lazy data only via '::', not ':::' :
+stopifnot(    nrow(datasets:: swiss) == 47)
+tools::assertError(datasets:::swiss)
+## The ::: versions gave NULL in certain development versions of R
+stopifnot(identical(stats4::show -> s4s,
+		    get("show", asNamespace("stats4") -> ns4)),
+	  s4s@package == "methods",
+	  is.null(ns4[["show"]]) # not directly in stats4 ns
+	  )
+## stats4::show was NULL for 4 hours in R-devel
+
+
+## mode<- did too much evaluation (PR#16215)
+x <- y <- quote(-2^2)
+x <- as.list(x)
+mode(y) <- "list"
+stopifnot(identical(x, y))
+## y ended up containing -4, not -2^2
+
+
+## besselJ()/besselY() with too large order
+besselJ(1, 2^64) ## NaN with a warning
+besselY(1, c(2^(60:70), Inf))
+## seg.faulted in R <= 3.1.2
+
+
+## besselJ()/besselY() with  nu = k + 1/2; k in {-1,-2,..}
+besselJ(1, -1750.5) ## Inf, with only one warning...
+stopifnot(is.finite(besselY(1, .5 - (1500 + 0:10))))
+## last gave NaNs; both: more warnings in R <= 3.1.x
+
+
+## BIC() for arima(), also with NA's
+lho <- lh; lho[c(3,7,13,17)] <- NA
+alh300 <- arima(lh,  order = c(3,0,0))
+alh311 <- arima(lh,  order = c(3,1,1))
+ao300  <- arima(lho, order = c(3,0,0))
+ao301  <- arima(lho, order = c(3,0,1))
+## AIC/BIC for *different* data rarely makes sense ... want warning:
+tools::assertWarning(AA <- AIC(alh300,alh311, ao300,ao301))
+tools::assertWarning(BB <- BIC(alh300,alh311, ao300,ao301))
+fmLst <- list(alh300,alh311, ao300,ao301)
+## nobs() did not "work" in R < 3.2.0:
+stopifnot(sapply(fmLst, nobs) == c(48,47, 44,44))
+lls <- lapply(fmLst, logLik)
+str(lapply(lls, unclass))# -> 'df' and 'nobs'
+## 'manual BIC' via generalized AIC:
+stopifnot(all.equal(BB[,"BIC"],
+                    sapply(fmLst, function(fm) AIC(fm, k = log(nobs(fm))))))
+## BIC() was NA unnecessarily in  R < 3.2.0; nobs() was not available eiher
+
+
+## as.integer() close and beyond maximal integer
+MI <- .Machine$integer.max
+stopifnot(identical( MI, as.integer( MI + 0.99)),
+	  identical(-MI, as.integer(-MI - 0.99)),
+	  is.na(as.integer(as.character( 100*MI))),
+	  is.na(as.integer(as.character(-100*MI))))
+## The two cases with positive numbers  failed in R <= 3.2.0
+
+
+## Ensure that sort() works with a numeric vector "which is an object":
+stopifnot(is.object(y <- freeny$y))
+stopifnot(diff(sort(y)) > 0)
+## order() and hence sort() failed here badly for a while around 2015-04-16
+
+
+## NAs in data frame names:
+dn <- list(c("r1", NA), c("V", NA))
+d11 <- as.data.frame(matrix(c(1, 1, 1, 1), ncol = 2, dimnames = dn))
+stopifnot(identical(names(d11), dn[[2]]),
+          identical(row.names(d11), dn[[1]]))
+## as.data.frame() failed in R-devel for a couple of hours ..
+## note that format(d11) does fail currently, and hence print(), too
+
+
+## Ensure  R -e ..  works on Unix
+if(.Platform$OS.type == "unix" &&
+   file.exists(Rc <- file.path(R.home("bin"), "R")) &&
+   file.access(Rc, mode = 1) == 0) { # 1: executable
+    cmd <- paste(Rc, "-q --vanilla -e 1:3")
+    ans <- system(cmd, intern=TRUE)
+    stopifnot(length(ans) >= 3,
+	      identical(ans[1:2], c("> 1:3",
+				    "[1] 1 2 3")))
+}
+## (failed for < 1 hr, in R-devel only)
+
+
+## Parsing large exponents of floating point numbers, PR#16358
+set.seed(12)
+lrg <- sprintf("%.0f", round(exp(10*(2+abs(rnorm(2^10))))))
+head(huge <- paste0("1e", lrg))
+    micro <- paste0("1e-", lrg)
+stopifnot(as.numeric(huge) == Inf,
+          as.numeric(micro) == 0)
+## Both failed in R <= 3.2.0
+
+
+## vcov() failed on manova() results, PR#16380
+tear <- c(6.5, 6.2, 5.8, 6.5, 6.5, 6.9, 7.2, 6.9, 6.1, 6.3, 6.7, 6.6, 7.2, 7.1, 6.8, 7.1, 7.0, 7.2, 7.5, 7.6)
+gloss <- c(9.5, 9.9, 9.6, 9.6, 9.2, 9.1, 10.0, 9.9, 9.5, 9.4, 9.1, 9.3, 8.3, 8.4, 8.5, 9.2, 8.8, 9.7, 10.1, 9.2)
+opacity <- c(4.4, 6.4, 3.0, 4.1, 0.8, 5.7, 2.0, 3.9, 1.9, 5.7, 2.8, 4.1, 3.8,1.6, 3.4, 8.4, 5.2, 6.9, 2.7, 1.9)
+Y <- cbind(tear, gloss, opacity)
+rate <- factor(gl(2,10), labels = c("Low", "High"))
+fit <- manova(Y ~ rate)
+vcov(fit)
+## Gave error because coef.aov() turned matrix of coefficients into a vector
+
+
+## Unary / Binary uses of logic operations, PR#16385
+tools::assertError(`&`(FALSE))
+tools::assertError(`|`(TRUE))
+## Did not give errors in R <= 3.2.0
+E <- tryCatch(`!`(), error = function(e)e)
+stopifnot(grepl("0 arguments .*\\<1", conditionMessage(E)))
+## Gave wrong error message in R <= 3.2.0
+stopifnot(identical(!matrix(TRUE), matrix(FALSE)),
+	  identical(!matrix(FALSE), matrix(TRUE)))
+## was wrong for while in R 3.2.0 patched
+
+
+## cummax(<integer>)
+iNA <- NA_integer_
+x <- c(iNA, 1L)
+stopifnot(identical(cummin(x), c(iNA, iNA)),
+          identical(cummax(x), c(iNA, iNA)))
+## an initial NA was not propagated in R <= 3.2.0
+
+
+## summaryRprof failed for very short profile, PR#16395
+profile <- tempfile()
+writeLines(c(
+'memory profiling: sample.interval=20000',
+':145341:345360:13726384:0:"stdout"',
+':208272:345360:19600000:0:"stdout"'), profile)
+summaryRprof(filename = profile, memory = "both")
+unlink(profile)
+## failed when a matrix was downgraded to a vector
+
+
+## option(OutDec = *)  -- now gives a warning when  not 1 character
+op <- options(OutDec = ".", digits = 7, # <- default
+              warn = 2)# <- (unexpected) warnings become errors
+stopifnot(identical("3.141593", fpi <- format(pi)))
+options(OutDec = ",")
+stopifnot(identical("3,141593", cpi <- format(pi)))
+## warnings, but it "works" (for now):
+tools::assertWarning(options(OutDec = ".1."))
+stopifnot(identical("3.1.141593", format(pi)))
+tools::assertWarning(options(OutDec = ""))
+tools::assertWarning(stopifnot(identical("3141593", format(pi))))
+options(op)# back to sanity
+## No warnings in R versions <= 3.2.1
+
+
+## format(*, decimal.mark=".")  when   OutDec != "."  (PR#16411)
+op <- options(OutDec = ",")
+stopifnot(identical(fpi, format(pi, decimal.mark=".")))
+## failed in R <= 3.2.1
+
+
+## model.frame() removed ts attributes on original data (PR#16436)
+orig <- class(EuStockMarkets)
+mf <- model.frame(EuStockMarkets ~ 1, na.action=na.fail)
+stopifnot(identical(orig, class(EuStockMarkets)))
+## ts class lost in R <= 3.2.1
+
+
+##
+foo <- as.expression(1:3)
+matrix(foo, 3, 3) # always worked
+matrix(foo, 3, 3, byrow = TRUE)
+## failed in R <= 3.1.2
+
+
+## labels.dendrogram(), dendrapply(), etc -- see comment #15 of PR#15215 :
+(D <- as.dendrogram(hclust(dist(cbind(setNames(c(0,1,4), LETTERS[1:3]))))))
+stopifnot(
+    identical(labels(D), c("C", "A", "B")),
+    ## has been used in "CRAN package space"
+    identical(suppressWarnings(dendrapply(D, labels)),
+              list("C", list("A", "B"), "C")))
+## dendrapply(D, labels) failed in R-devel for a day or two
+
+
+## poly() / polym() predict()ion
+library(datasets)
+alm <- lm(stack.loss ~ poly(Air.Flow, Water.Temp, degree=3), stackloss)
+f20 <- fitted(alm)[1:20] # "correct" prediction values [1:20]
+stopifnot(all.equal(unname(f20[1:4]), c(39.7703378, 39.7703378, 35.8251359, 21.5661761)),
+	  all.equal(f20, predict(alm, stackloss) [1:20] , tolerance = 1e-14),
+	  all.equal(f20, predict(alm, stackloss[1:20, ]), tolerance = 1e-14))
+## the second prediction went off in  R <= 3.2.1
+
+
+## PR#16478
+kkk <- c("a\tb", "3.14\tx")
+z1 <- read.table(textConnection(kkk), sep = "\t", header = TRUE,
+                 colClasses = c("numeric", "character"))
+z2 <- read.table(textConnection(kkk), sep = "\t", header = TRUE,
+                 colClasses = c(b = "character", a = "numeric"))
+stopifnot(identical(z1, z2))
+z3 <- read.table(textConnection(kkk), sep = "\t", header = TRUE,
+                 colClasses = c(b = "character"))
+stopifnot(identical(z1, z3))
+z4 <- read.table(textConnection(kkk), sep = "\t", header = TRUE,
+                 colClasses = c(c = "integer", b = "character", a = "numeric"))
+stopifnot(identical(z1, z4))
+## z2 and z4 used positional matching (and failed) in R < 3.3.0.
+
+
+## PR#16484
+z <- regexpr("(.)", NA_character_, perl = TRUE)
+stopifnot(is.na(attr(z, "capture.start")), is.na(attr(z, "capture.length")))
+## Result was random integers in R <= 3.2.2.
+
+
+## PR#14861
+if(.Platform$OS.type == "unix") { # no 'ls /'  on Windows
+    con <- pipe("ls /", open = "rt")
+    data <- readLines(con)
+    z <- close(con)
+    print(z)
+    stopifnot(identical(z, 0L))
+}
+## was NULL in R <= 3.2.2
+
+
+## Sam Steingold:  compiler::enableJIT(3) not working in ~/.Rprofile anymore
+stopifnot(identical(topenv(baseenv()),
+                    baseenv()))
+## accidentally globalenv in R 3.2.[12] only
+

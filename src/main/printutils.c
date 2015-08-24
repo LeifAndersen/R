@@ -1,7 +1,7 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
  *  Copyright (C) 1995, 1996  Robert Gentleman and Ross Ihaka
- *  Copyright (C) 1999--2014  The R Core Team
+ *  Copyright (C) 1999--2015  The R Core Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 
@@ -74,18 +74,14 @@
 #endif
 
 #ifdef Win32
-int trio_vsnprintf(char *buffer, size_t bufferSize, const char *format,
-		   va_list args);
-# define vsnprintf trio_vsnprintf
+#include <trioremap.h>
 #endif
-
 #ifndef min
 #define min(a, b) (((a)<(b))?(a):(b))
 #endif
 
 #define BUFSIZE 8192  /* used by Rprintf etc */
 
-/* Only if ierr < 0 or not is currently used */
 attribute_hidden
 R_size_t R_Decode2Long(char *p, int *ierr)
 {
@@ -95,6 +91,7 @@ R_size_t R_Decode2Long(char *p, int *ierr)
     /* else look for letter-code ending : */
     if(R_Verbose)
 	REprintf("R_Decode2Long(): v=%ld\n", v);
+    // NB: currently, positive *ierr are not differentiated in the callers:
     if(p[0] == 'G') {
 	if((Giga * (double)v) > R_SIZE_T_MAX) { *ierr = 4; return(v); }
 	return (R_size_t) Giga * v;
@@ -219,7 +216,7 @@ const char *EncodeReal0(double x, int w, int d, int e, const char *dec)
     return out;
 }
 
-static const char 
+static const char
 *EncodeRealDrop0(double x, int w, int d, int e, const char *dec)
 {
     static char buff[NB], buff2[2*NB];
@@ -752,7 +749,7 @@ const char *EncodeString(SEXP s, int w, int quote, Rprt_adj justify)
 
 /* EncodeElement is called by cat(), write.table() and deparsing. */
 
-/* NB this is called by R.app even though it is in no public header, so 
+/* NB this is called by R.app even though it is in no public header, so
    alter there if you alter this */
 const char *EncodeElement(SEXP x, int indx, int quote, char cdec)
 {

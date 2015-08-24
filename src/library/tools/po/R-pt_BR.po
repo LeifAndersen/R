@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 2.13.0\n"
 "Report-Msgid-Bugs-To: bugs.r-project.org\n"
-"POT-Creation-Date: 2015-01-29 09:33\n"
+"POT-Creation-Date: 2015-06-06 13:51\n"
 "PO-Revision-Date: 2011-03-26 08:57-0300\n"
 "Last-Translator: Colin Robert <beasley@ufpa.br>\n"
 "Language-Team: http://www.feferraz.net/br/P/Projeto_Traducao_R_Portugues\n"
@@ -12,9 +12,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "X-Generator: Pootle 2.0.5\n"
-
-msgid "Reading %s failed with message: %s"
-msgstr ""
 
 msgid "Checking %s"
 msgstr ""
@@ -231,6 +228,13 @@ msgid ""
 "already be known to R."
 msgstr ""
 
+msgid "Malformed Title field: should not end in a period."
+msgstr ""
+
+msgid ""
+"Malformed Description field: should contain one or more complete sentences."
+msgstr ""
+
 msgid ""
 "See section 'The DESCRIPTION file' in the 'Writing R Extensions' manual."
 msgstr ""
@@ -250,7 +254,12 @@ msgstr ""
 msgid "Cannot extract Maintainer field from Authors@R field:"
 msgstr ""
 
-msgid "Authors@R field gives no person with maintainer role and email address."
+msgid "Authors@R field gives more than one person with maintainer role:"
+msgstr ""
+
+msgid ""
+"Authors@R field gives no person with maintainer role, valid email address "
+"and non-empty name."
 msgstr ""
 
 msgid "Encoding '%s' is not portable"
@@ -681,12 +690,6 @@ msgstr ""
 msgid "assertConditon: Successfully caught a condition"
 msgstr ""
 
-msgid "assertCondition: caught %s"
-msgstr ""
-
-msgid ","
-msgstr ""
-
 msgid "Got %s in evaluating %s; wanted %s"
 msgstr ""
 
@@ -749,9 +752,6 @@ msgid "downloading reverse dependencies ..."
 msgstr ""
 
 msgid "downloading %s ..."
-msgstr ""
-
-msgid "installing dependencies %s"
 msgstr ""
 
 msgid "checking %s ..."
@@ -882,6 +882,12 @@ msgstr ""
 msgid "building a fake installation is disallowed"
 msgstr ""
 
+msgid ""
+"See\n"
+"  %s\n"
+"for details."
+msgstr ""
+
 msgid "there is no package called '%s'"
 msgstr ""
 
@@ -932,9 +938,6 @@ msgid ""
 msgstr ""
 
 msgid "Cannot extract version info from the following section titles:"
-msgstr ""
-
-msgid "%s"
 msgstr ""
 
 msgid ""
@@ -1106,18 +1109,6 @@ msgstr ""
 msgid "test '%s' is not available"
 msgstr ""
 
-msgid ":"
-msgstr ""
-
-msgid "latin1"
-msgstr ""
-
-msgid "ASCII"
-msgstr ""
-
-msgid "byte"
-msgstr ""
-
 msgid "argument 'x' must be a character vector"
 msgstr ""
 
@@ -1164,6 +1155,9 @@ msgid "cannot source package code"
 msgstr ""
 
 msgid "Call sequence:"
+msgstr ""
+
+msgid "'text' must be a character vector"
 msgstr ""
 
 msgid "parsing '%s'"

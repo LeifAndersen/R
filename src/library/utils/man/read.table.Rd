@@ -1,6 +1,6 @@
 % File src/library/utils/man/read.table.Rd
-% Part of the R package, http://www.R-project.org
-% Copyright 1995-2014 R Core Team
+% Part of the R package, https://www.R-project.org
+% Copyright 1995-2015 R Core Team
 % Distributed under GPL 2 or later
 
 \name{read.table}
@@ -80,7 +80,8 @@ read.delim2(file, header = TRUE, sep = "\t", quote = "\"",
   \item{dec}{the character used in the file for decimal points.}
 
   \item{numerals}{string indicating how to convert numbers whose conversion
-    to double precision would lose accuracy, see \code{\link{type.convert}}.}
+    to double precision would lose accuracy, see \code{\link{type.convert}}.
+    Can be abbreviated.}
 
   \item{row.names}{a vector of row names.  This can be a vector giving
     the actual row names, or a single number giving the column of the
@@ -122,8 +123,8 @@ read.delim2(file, header = TRUE, sep = "\t", quote = "\"",
     complex fields.}
 
   \item{colClasses}{character.  A vector of classes to be assumed for
-    the columns.  Recycled as necessary, or if the character vector is
-    named, unspecified values are taken to be \code{NA}.
+    the columns.  If unnamed, recycled as necessary.  If named, names
+    are matched with unspecified values being taken to be \code{NA}.
 
     Possible values are \code{NA} (the default, when
     \code{\link{type.convert}} is used), \code{"NULL"} (when the column
@@ -317,7 +318,7 @@ read.delim2(file, header = TRUE, sep = "\t", quote = "\"",
   reading files which result in reports of incorrect record lengths (see
   the \sQuote{Examples} below).
 
-  \url{http://tools.ietf.org/html/rfc4180} for the IANA definition of
+  \url{https://tools.ietf.org/html/rfc4180} for the IANA definition of
   CSV files (which requires comma as separator and CRLF line endings).
 }
 

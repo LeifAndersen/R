@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: R 2.4.0\n"
 "Report-Msgid-Bugs-To: bugs.r-project.org\n"
-"POT-Creation-Date: 2014-05-26 08:40\n"
+"POT-Creation-Date: 2015-06-06 13:51\n"
 "PO-Revision-Date: 2005-02-04 08:37+0000\n"
 "Last-Translator: 陈斐 <feic@normipaiva.com>\n"
 "Language-Team: Chinese\n"
@@ -230,6 +230,10 @@ msgstr "'x'和'y'的值不能是无限的，而且不能有缺少"
 msgid "'z' must be a matrix"
 msgstr "'z'必需是矩阵"
 
+#, fuzzy
+msgid "'z' must be numeric or logical"
+msgstr "'x'必需为数值"
+
 msgid "invalid z limits"
 msgstr "z的限制不对"
 
@@ -450,9 +454,9 @@ msgid "argument %s is not made use of"
 msgid_plural "arguments %s are not made use of"
 msgstr[0] "没有用%s这个参数"
 
-msgid "extra argument %s will be disregarded"
-msgid_plural "extra arguments %s will be disregarded"
-msgstr[0] "多余的参数%s略过不用"
+#~ msgid "extra argument %s will be disregarded"
+#~ msgid_plural "extra arguments %s will be disregarded"
+#~ msgstr[0] "多余的参数%s略过不用"
 
 #~ msgid "negative 'counts'. Internal Error in C-code for \"bincount\""
 #~ msgstr "负的'counts'。\"bincount\"的C码里出现了内部错误"

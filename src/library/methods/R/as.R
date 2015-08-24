@@ -1,7 +1,7 @@
 #  File src/library/methods/R/as.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
-#  Copyright (C) 1995-2013 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 as <-
   ## Returns the version of this object coerced to be the given `Class'.
@@ -149,13 +149,13 @@ as <-
   function(object, Class, value) {
     thisClass <- .class1(object)
     if(!.identC(.class1(value), Class))
-      value <- as(value, Class, strict = FALSE)
+        value <- as(value, Class, strict = FALSE)
     where <- .classEnv(class(object))
     coerceFun <- getGeneric("coerce<-", where = where)
     coerceMethods <- getMethodsForDispatch(coerceFun)
     asMethod <- .quickCoerceSelect(thisClass, Class, coerceFun, coerceMethods, where)
     if(is.null(asMethod)) {
-        sig <-  c(from=thisClass, to = Class)
+        sig <- c(from = thisClass, to = Class)
         canCache <- TRUE
         inherited <- FALSE
         asMethod <- selectMethod("coerce<-", sig, TRUE, FALSE, #optional, no inheritance
@@ -261,7 +261,7 @@ setAs <-
                             domain = NA)
                 }
                 method <- eval(function(from, to, value)NULL)
-                functionBody(method, envir = .GlobalEnv) <- replace
+                body(method, envir = .GlobalEnv) <- replace
             }
             setMethod("coerce<-", c(from, to), method, where = where)
         }

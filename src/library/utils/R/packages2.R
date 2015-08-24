@@ -1,5 +1,5 @@
 #  File src/library/utils/R/packages2.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
 #  Copyright (C) 1995-2015 The R Core Team
 #
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 if (.Platform$OS.type == "windows")
     .install.macbinary <- function(...) NULL	# globalVariables isn't available, so use this to suppress the warning
@@ -206,20 +206,24 @@ install.packages <-
         ## if no packages were specified, use a menu
 	if(.Platform$OS.type == "windows" || .Platform$GUI == "AQUA"
            || (capabilities("tcltk")
-               && capabilities("X11") && suppressWarnings(tcltk:::.TkUp)) ) {
+               && capabilities("X11") && suppressWarnings(tcltk::.TkUp)) ) {
             ## this is the condition for a graphical select.list()
 	} else
 	    stop("no packages were specified")
 
-        ## This will only offer the specified type.
-	if(is.null(available))
-	    available <- available.packages(contriburl = contriburl,
-					    method = method)
-	if(NROW(available)) {
+        ## This will only offer the specified type.  If type = "both"
+        ## do not want 'available' set for "source".
+	if(is.null(available)) {
+	    av <- available.packages(contriburl = contriburl, method = method)
+	    if (missing(repos)) ## Evaluating contriburl may have changed repos, which may be used below
+	      repos <- getOption("repos")
+            if(type != "both") available <- av
+        } else av <- available
+	if(NROW(av)) {
             ## avoid duplicate entries in menus, since the latest available
             ## will be picked up
             ## sort in the locale, as R <= 2.10.1 did so
-	    pkgs <- select.list(sort(unique(rownames(available))),
+	    pkgs <- select.list(sort(unique(rownames(av))),
                                 multiple = TRUE,
                                 title = "Packages", graphics = TRUE)
 	}
@@ -313,6 +317,17 @@ install.packages <-
                 message("inferring 'repos = NULL' from 'pkgs'")
            }
         }
+    }
+
+    ## check if we should infer the type
+    if (length(pkgs) == 1L && is.null(repos) && type == "both") {
+    	if (  (type2 %in% "win.binary" && grepl("[.]zip$", pkgs))
+	    ||(substr(type2, 1L, 10L) == "mac.binary"
+		   && grepl("[.]tgz$", pkgs))) {
+	    type <- type2
+	} else if (grepl("[.]tar[.](gz|bz2|xz)$", pkgs)) {
+	    type <- "source"
+       }
     }
 
     if(is.null(repos) && missing(contriburl)) {
@@ -438,13 +453,15 @@ install.packages <-
                                    method = method, available = av2,
                                    destdir = destdir,
                                    dependencies = NULL,
-                                   libs_only = libs_only, ...)
+                                   libs_only = libs_only,
+                                   quiet = quiet, ...)
             else
                 .install.macbinary(pkgs = bins, lib = lib,
                                    contriburl = contrib.url(repos, type2),
                                    method = method, available = av2,
                                    destdir = destdir,
-                                   dependencies = NULL, ...)
+                                   dependencies = NULL,
+                                   quiet = quiet, ...)
         }
         pkgs <- setdiff(pkgs, bins)
         if(!length(pkgs)) return(invisible())
@@ -718,7 +735,7 @@ install.packages <-
                 ##   cmd <- paste(c(shQuote(command), env, args),
                 ##                collapse = " ")
                 ## on Windows?
-                cmd <- paste(c(shQuote(cmd0), args), collapse = " ")
+                cmd <- paste(c("MAKEFLAGS=", shQuote(cmd0), args), collapse = " ")
                 ## </NOTE>
                 deps <- aDL[[pkg]]
                 deps <- deps[deps %in% upkgs]
@@ -782,10 +799,11 @@ install.packages <-
                 file.remove(outfiles)
             }
         }
+        ## Using stderr is the wish of PR#16420
         if(!quiet && nonlocalrepos && !is.null(tmpd) && is.null(destdir))
             cat("\n", gettextf("The downloaded source packages are in\n\t%s",
                                sQuote(normalizePath(tmpd, mustWork = FALSE))),
-                "\n", sep = "")
+                "\n", sep = "", file = stderr())
         ## update packages.html on Unix only if .Library was installed into
         libs_used <- unique(update[, 2L])
         if(.Platform$OS.type == "unix" && .Library %in% libs_used) {

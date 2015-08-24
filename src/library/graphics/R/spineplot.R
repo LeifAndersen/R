@@ -1,7 +1,7 @@
 #  File src/library/graphics/R/spineplot.R
-#  Part of the R package, http://www.R-project.org
+#  Part of the R package, https://www.R-project.org
 #
-#  Copyright (C) 1995-2014 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 ## Spine plots/Spinograms contributed by Achim Zeileis
 
@@ -33,7 +33,7 @@ function(formula, data = NULL,
     ## extract x, y from formula
     m <- match.call(expand.dots = FALSE)
     m <- m[c(1L, match(c("formula", "data", "subset"), names(m), 0L))]
-    require(stats, quietly=TRUE)
+    ## need stats:: for non-standard evaluation
     m[[1L]] <- quote(stats::model.frame)
     mf <- eval.parent(m)
     if(NCOL(mf) != 2L)

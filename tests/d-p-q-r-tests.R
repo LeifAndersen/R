@@ -18,9 +18,8 @@ opt.conformance <- 0
 Meps <- .Machine $ double.eps
 xMax <- .Machine $ double.xmax
 options(rErr.eps = 1e-30)
-rErr <- function(approx, true, eps = .Options$rErr.eps)
+rErr <- function(approx, true, eps = getOption("rErr.eps", 1e-30))
 {
-    if(is.null(eps)) { eps <- 1e-30; options(rErr.eps = eps) }
     ifelse(Mod(true) >= eps,
 	   1 - approx / true, # relative error
 	   true - approx)     # absolute error (e.g. when true=0)
@@ -642,7 +641,12 @@ for(nu in df.set) {
     pqq <- pt(-qq, df = nu, log=TRUE)
     stopifnot(is.finite(pqq))
 }
-##
+## PR#14230 -- more extreme beta cases {should no longer rely on denormalized}
+x <- (256:512)/1024
+P <- pbeta(x, 3, 2200, lower.tail=FALSE, log.p=TRUE)
+stopifnot(is.finite(P), P < -600,
+	  -.001 < (D3P <- diff(P, diff = 3)), D3P < 0, diff(D3P) < 0)
+## all but the first 43 where -Inf in R <= 2.9.1
 stopifnot(All.eq(pt(2^-30, df=10),
                  0.50000000036238542))
 ## = .5+ integrate(dt, 0,2^-30, df=10, rel.tol=1e-20)
@@ -846,6 +850,98 @@ stopifnot(pbeta(.1, Inf, 40) == 0,
 assertWarning(qN <- qbeta(2^-(10^(1:3)), 2,3, log.p=TRUE))
 assertWarning(qn <- qbeta(c(-.1, -1e-300, 1.25), 2,3))
 stopifnot(is.nan(qN), is.nan(qn))
+
+## lognormal boundary case sdlog = 0:
+p <- (0:8)/8; x <- 2^(-10:10)
+stopifnot(all.equal(qlnorm(p, meanlog=1:2, sdlog=0),
+		    qlnorm(p, meanlog=1:2, sdlog=1e-200)),
+	  dlnorm(x, sdlog=0) == ifelse(x == 1, Inf, 0))
+
+## qbeta(*, a,b) when  a,b << 1 : can easily fail
+qbeta(2^-28, 0.125, 2^-26) # 1000 Newton it + warning
+a <- 1/8; b <- 2^-(4:200); alpha <- b/4
+qq <- qbeta(alpha, a,b)# gave warnings intermediately
+pp <- pbeta(qq, a,b)
+stopifnot(pp > 0, diff(pp) < 0, ## pbeta(qbeta(alpha,*),*) == alpha:
+          abs(1 - pp/alpha) < 4e-15)# seeing 2.2e-16
+
+## orig. qbeta() using *many* Newton steps; case where we "know the truth"
+a <- 25; b <- 6; x <- 2^-c(3:15, 100, 200, 250, 300+100*(0:7))
+pb <- c(## via Rmpfr's roundMpfr(pbetaI(x, a,b, log.p=TRUE, precBits = 2048), 64) :
+    -40.7588797271766572448, -57.7574063441183625303, -74.9287878018119846216,
+    -92.1806244636893542185, -109.471318248524419364, -126.781111923947395655,
+    -144.100375042814531426, -161.424352961544612370, -178.750683324909148353,
+    -196.078188674895169383, -213.406281209657976525, -230.734667259724367416,
+    -248.063200048177428608, -1721.00081201679567511, -3453.86876341665894863,
+    -4320.30273911659058550, -5186.73671481652222237, -6919.60466621638549567,
+    -8652.47261761624876897, -10385.3405690161120427, -12118.2085204159753165,
+    -13851.0764718158385902, -15583.9444232157018631, -17316.8123746155651368)
+stopifnot(all.equal(pb, pbeta(x,a,b, log.p=TRUE), tol=8e-16))# seeing {1.5|1.6|2.0}e-16
+qp <- qbeta(pb, a,b, log.p=TRUE)
+## x == qbeta(pbeta(x, *), *) :
+stopifnot(qp > 0, all.equal(x, qp, tol= 1e-15))# seeing {2.4|3.3}e-16
+
+## qbeta(), PR#15755
+a1 <- 0.0672788; b1 <- 226390
+p <- 0.6948886
+qp <- qbeta(p, a1,b1)
+stopifnot(qp < 2e-8, # was '1' (with a warning) in R <= 3.1.0
+          All.eq(p, pbeta(qp, a1,b1)))
+## less extreme example, same phenomenon:
+a <- 43779; b <- 0.06728
+stopifnot(All.eq(0.695, pbeta(qbeta(0.695, b,a), b,a)))
+x <- -exp(seq(0, 14, by=2^-9))
+ct <- system.time(qx <- qbeta(x, a,b, log.p=TRUE))[[1]]
+pqx <- pbeta(qx, a,b, log=TRUE)
+stopifnot(all.equal(x, pqx, tol= 2e-15)) # seeing {3.51|3.54}e-16
+## note that qx[x > -exp(2)] is too close to 1 to get full accuracy:
+## i2 <- x > -exp(2); all.equal(x[i2], pqx[i2], tol= 0)#-> 5.849e-12
+if(ct > 0.5) { cat("system.time:\n"); print(ct) }# lynne(2013): 0.048
+## was Inf, and much slower, for R <= 3.1.0
+x3 <- -(15450:15700)/2^11
+pq3 <- pbeta(qbeta(x3, a,b, log.p=TRUE), a,b, log=TRUE)
+stopifnot(mean(abs(pq3-x3)) < 4e-12,# 1.46e-12
+          max (abs(pq3-x3)) < 8e-12)# 2.95e-12
+##
+.a <- .2; .b <- .03; lp <- -(10^-(1:323))
+qq <- qbeta(lp, .a,.b, log=TRUE) # warnings in R <= 3.1.0
+assertWarning(qN <- qbeta(.5, 2,3, log.p=TRUE))
+assertWarning(qn <- qbeta(c(-.1, 1.25), 2,3))
+stopifnot(1-qq < 1e-15, is.nan(qN), is.nan(qn))# typically qq == 1  exactly
+## failed in intermediate versions
+##
+a <- 2^-8; b <- 2^(200:500)
+pq <- pbeta(qbeta(1/8, a, b), a, b)
+stopifnot(abs(pq - 1/8) < 1/8)
+## whereas  qbeta() would underflow to 0 "too early", for R <= 3.1.0
+#
+## very extreme tails on both sides
+x <- c(1e-300, 1e-12, 1e-5, 0.1, 0.21, 0.3)
+stopifnot(0 == qbeta(x, 2^-12, 2^-10))## gave warnings
+a <- 10^-(8:323)
+qb <- qbeta(0.95, a, 20)
+## had warnings and wrong value +1; also NaN
+ct2 <- system.time(q2 <- qbeta(0.95, a,a))[1]
+stopifnot(is.finite(qb), qb < 1e-300, q2 == 1)
+if(ct2 > 0.020) { cat("system.time:\n"); print(ct2) }
+## had warnings and was much slower for R <= 3.1.0
+
+## qt(p, df= Inf, ncp)  <==> qnorm(p, m=ncp)
+p <- (0:32)/32
+stopifnot(all.equal(qt(p, df=Inf, ncp=5), qnorm(p, m=5)))
+## qt(*, df=Inf, .)  gave NaN in  R <= 3.2.1
+
+## rhyper(*, <large>);  PR#16489
+ct3 <- system.time(N <- rhyper(100, 8000, 1e9-8000, 1e6))[1]
+table(N)
+summary(N)
+stopifnot(abs(mean(N) - 8) < 1.5)
+if(ct3 > 0.02) { cat("system.time:\n"); print(ct3) }
+## N were all 0 and took very long for R <= 3.2.1
+set.seed(17)
+stopifnot(rhyper(1, 3024, 27466, 251) == 25,
+          rhyper(1,  329,  3059, 225) == 22)
+## failed for a day after a "thinko" in the above bug fix.
 
 
 cat("Time elapsed: ", proc.time() - .ptime,"\n")

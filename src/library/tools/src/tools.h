@@ -1,6 +1,6 @@
 /*
  *  R : A Computer Language for Statistical Data Analysis
- *  Copyright (C) 2003-11   The R Core Team.
+ *  Copyright (C) 2003-2015   The R Core Team.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
+ *  https://www.R-project.org/Licenses/
  */
 
 #ifndef R_TOOLS_H
@@ -41,6 +41,7 @@ SEXP codeFilesAppend(SEXP f1, SEXP f2);
 SEXP getfmts(SEXP format);
 SEXP startHTTPD(SEXP sIP, SEXP sPort);
 SEXP stopHTTPD(void);
+SEXP splitString(SEXP string, SEXP delims);
 
 SEXP C_parseLatex(SEXP call, SEXP op, SEXP args, SEXP env);
 SEXP C_parseRd(SEXP call, SEXP op, SEXP args, SEXP env);

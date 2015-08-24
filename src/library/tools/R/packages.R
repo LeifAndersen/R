@@ -1,7 +1,7 @@
-#  File src/library/tools/R/writePACKAGES.R
-#  Part of the R package, http://www.R-project.org
+#  File src/library/tools/R/packages.R
+#  Part of the R package, https://www.R-project.org
 #
-#  Copyright (C) 1995-2014 The R Core Team
+#  Copyright (C) 1995-2015 The R Core Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  A copy of the GNU General Public License is available at
-#  http://www.r-project.org/Licenses/
+#  https://www.R-project.org/Licenses/
 
 write_PACKAGES <-
 function(dir = ".", fields = NULL,
@@ -26,7 +26,7 @@ function(dir = ".", fields = NULL,
         type <- "win.binary"
     type <- match.arg(type)
     nfields <- 0
-    out <- file(file.path(dir, "PACKAGES"), "wt")
+    out   <-   file(file.path(dir, "PACKAGES"   ), "wt")
     outgz <- gzfile(file.path(dir, "PACKAGES.gz"), "wt")
 
     paths <- ""
@@ -200,7 +200,7 @@ function(dir, fields = NULL, verbose = getOption("verbose"))
 dependsOnPkgs <-
 function(pkgs, dependencies = c("Depends", "Imports", "LinkingTo"),
          recursive = TRUE, lib.loc = NULL,
-         installed = installed.packages(lib.loc, fields = "Enhances"))
+         installed = utils::installed.packages(lib.loc, fields = "Enhances"))
 {
     if(identical(dependencies, "all"))
         dependencies <-
@@ -255,7 +255,7 @@ function(ap)
 package_dependencies <-
 function(packages = NULL, db,
          which = c("Depends", "Imports", "LinkingTo"),
-         recursive = FALSE, reverse = FALSE)
+         recursive = FALSE, reverse = FALSE, verbose = getOption("verbose"))
 {
     ## <FIXME>
     ## What about duplicated entries?
@@ -316,7 +316,7 @@ function(packages = NULL, db,
     if(!recursive) {
         ## Need to invert.
         depends <-
-            split(rep.int(db[, "Package"], sapply(depends, length)),
+            split(rep.int(db[, "Package"], lengths(depends)),
                   factor(unlist(depends), levels = all_packages))
         if(!is.null(packages)) {
             depends <- depends[match(packages, names(depends))]
@@ -338,18 +338,15 @@ function(packages = NULL, db,
     ## with i R j and j R k, respectively, and combine these.
     ## This works reasonably well, but of course more efficient
     ## implementations should be possible.
+    matchP <- match(rep.int(db[, "Package"], lengths(depends)),
+		    all_packages)
+    matchD <- match(unlist(depends), all_packages)
     tab <- if(reverse)
-        split(match(rep.int(db[, "Package"],
-                            sapply(depends, length)),
-                    all_packages),
-              factor(match(unlist(depends), all_packages),
-                     levels = seq_along(all_packages)))
+	split(matchP,
+	      factor(matchD, levels = seq_along(all_packages)))
     else
-        split(match(unlist(depends), all_packages),
-              factor(match(rep.int(db[, "Package"],
-                                   sapply(depends, length)),
-                           all_packages),
-                     levels = seq_along(all_packages)))
+	split(matchD,
+	      factor(matchP, levels = seq_along(all_packages)))
     if(is.null(packages)) {
         if(reverse) {
             packages <- all_packages
@@ -367,23 +364,21 @@ function(packages = NULL, db,
         }
     }
     p_R <- tab[p_L]
-    pos <- cbind(rep.int(p_L, sapply(p_R, length)), unlist(p_R))
-    ctr <- 1L
-    verbose <- getOption("verbose")
+    pos <- cbind(rep.int(p_L, lengths(p_R)), unlist(p_R))
+    ctr <- 0L
     repeat {
-        if(verbose) cat("Cycle:", ctr)
+        if(verbose) cat("Cycle:", (ctr <- ctr + 1L))
         p_L <- split(pos[, 1L], pos[, 2L])
         new <- do.call(rbind,
                        Map(function(i, k)
                            cbind(rep.int(i, length(k)),
-                                     rep(k, each = length(i))),
+                                 rep(k, each = length(i))),
                            p_L, tab[as.integer(names(p_L))]))
         npos <- unique(rbind(pos, new))
         nnew <- nrow(npos) - nrow(pos)
         if(verbose) cat(" NNew:", nnew, "\n")
         if(!nnew) break
         pos <- npos
-        ctr <- ctr + 1L
     }
     depends <-
         split(all_packages[pos[, 2L]],
