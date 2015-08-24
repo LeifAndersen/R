@@ -142,7 +142,11 @@ SEXP duplicate(SEXP s){
     RCNTXT *rcn = R_GlobalContext;
     PROTECT(m = install("duplicate"));
     //PROTECT(p = mkString("generic"));
-    PROTECT(p = deparse1WithCutoff(rcn->call, 0, 120, TRUE, DEFAULTDEPARSE, -1));
+    //PROTECT(p = deparse1WithCutoff(rcn->call, 0, 120, TRUE, DEFAULTDEPARSE, -1));
+    if(getAttrib(s,install("source")) == R_NilValue)
+        PROTECT(p = mkString("generic"));
+    else
+        PROTECT(p = getAttrib(s, install("source")));
     R_AddMark(m, p, TRUE);
     //Rprintf("duplicate\n");
     //PrintValue(m);
@@ -178,7 +182,11 @@ SEXP shallow_duplicate(SEXP s)
     RCNTXT *rcn = R_GlobalContext;
     PROTECT(m = install("duplicate"));
     //PROTECT(p = mkString("generic"));
-    PROTECT(p = deparse1WithCutoff(rcn->call, 0, 120, TRUE, DEFAULTDEPARSE, -1));
+    //PROTECT(p = deparse1WithCutoff(rcn->call, 0, 120, TRUE, DEFAULTDEPARSE, -1));
+    if(getAttrib(s,install("source")) == R_NilValue)
+        PROTECT(p = mkString("generic"));
+    else
+        PROTECT(p = getAttrib(s, install("source")));
     R_AddMark(m, p, TRUE);
     //Rprintf("shallow_duplicate\n");
     //PrintValue(m);
@@ -301,7 +309,11 @@ static R_INLINE SEXP duplicate_list(SEXP s, Rboolean deep)
     RCNTXT *rcn = R_GlobalContext;
     PROTECT(m = install("duplicate"));
     //PROTECT(p = mkString("generic"));
-    PROTECT(p = deparse1WithCutoff(rcn->call, 0, 120, TRUE, DEFAULTDEPARSE, -1));
+    //PROTECT(p = deparse1WithCutoff(rcn->call, 0, 120, TRUE, DEFAULTDEPARSE, -1));
+    if(getAttrib(s,install("source")) == R_NilValue)
+        PROTECT(p = mkString("generic"));
+    else
+        PROTECT(p = getAttrib(s, install("source")));
     R_AddMark(m, p, TRUE);
     //Rprintf("duplicate_list\n");
     //PrintValue(m);
@@ -337,8 +349,12 @@ static SEXP duplicate1(SEXP s, Rboolean deep)
     SEXP m, p;
     RCNTXT *rcn = R_GlobalContext;
     PROTECT(m = install("duplicate"));
-    PROTECT(p = deparse1WithCutoff(rcn->call, 0, 120, TRUE, DEFAULTDEPARSE, -1));
+    //PROTECT(p = deparse1WithCutoff(rcn->call, 0, 120, TRUE, DEFAULTDEPARSE, -1));
     //PROTECT(p = mkString("generic"));
+    if(getAttrib(s,install("source")) == R_NilValue)
+        PROTECT(p = mkString("generic"));
+    else
+        PROTECT(p = getAttrib(s, install("source")));
     R_AddMark(m, p, TRUE);
     //Rprintf("duplicate1\n");
     //PrintValue(m);
