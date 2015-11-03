@@ -651,7 +651,7 @@ SEXP attribute_hidden do_subset(SEXP call, SEXP op, SEXP args, SEXP rho)
 	    SET_NAMED(ans, 2);
 	return(ans);
     }
-    R_AddMark(install("subset"), mkstring("generic"), TRUE);
+    R_AddMark(install("subset"), mkString("generic"), TRUE);
 
     /* Method dispatch has failed, we now */
     /* run the generic internal code. */
@@ -882,7 +882,7 @@ SEXP attribute_hidden do_subset2(SEXP call, SEXP op, SEXP args, SEXP rho)
 	return(ans);
     }
 
-    R_AddMark(install("subset"), mkstring("generic"), TRUE);
+    R_AddMark(install("subset"), mkString("generic"), TRUE);
 
     /* Method dispatch has failed. */
     /* We now run the generic internal code. */
@@ -1112,7 +1112,7 @@ pstrmatch(SEXP target, SEXP input, size_t slen)
 SEXP attribute_hidden do_subset3(SEXP call, SEXP op, SEXP args, SEXP env)
 {
     SEXP input, nlist, ans;
-    R_AddMark(install("subset"), mkstring("generic"), TRUE);
+    R_AddMark(install("subset"), mkString("generic"), TRUE);
     checkArity(op, args);
 
     /* first translate CADR of args into a string so that we can
@@ -1142,14 +1142,14 @@ SEXP attribute_hidden do_subset3(SEXP call, SEXP op, SEXP args, SEXP env)
     /* through to the generic code below.  Note that */
     /* evaluation retains any missing argument indicators. */
 
-    R_AddMark(install("subset"), mkstring("antimark"), TRUE);
+    R_AddMark(install("subset"), mkString("antimark"), TRUE);
     if(R_DispatchOrEvalSP(call, op, "$", args, env, &ans)) {
 	UNPROTECT(2);
 	if (NAMED(ans))
 	    SET_NAMED(ans, 2);
 	return(ans);
     }
-    R_AddMark(install("subset"), mkstring("generic"), TRUE);
+    R_AddMark(install("subset"), mkString("generic"), TRUE);
 
     UNPROTECT(2);
     return R_subset3_dflt(CAR(ans), STRING_ELT(input, 0), call);
